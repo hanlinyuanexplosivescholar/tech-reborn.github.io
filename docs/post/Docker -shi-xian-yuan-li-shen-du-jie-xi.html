@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html data-color-mode="light" data-dark-theme="dark" data-light-theme="light" lang="zh-CN">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
+    
+    <link rel="icon" href="https://avatars.githubusercontent.com/u/68176923?v=4"><script>
+        let theme = localStorage.getItem("meek_theme") || "light";
+        document.documentElement.setAttribute("data-color-mode", theme);
+    </script>
+<meta name="description" content="## 引言：超越“在我的机器上能跑”的问题
+
+在软件开发领域，开发者们普遍面临一个令人沮丧的挑战，即“在我的机器上能跑”的问题。">
+<meta property="og:title" content="Docker 实现原理深度解析">
+<meta property="og:description" content="## 引言：超越“在我的机器上能跑”的问题
+
+在软件开发领域，开发者们普遍面临一个令人沮丧的挑战，即“在我的机器上能跑”的问题。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/Docker%20-shi-xian-yuan-li-shen-du-jie-xi.html">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/68176923?v=4">
+<title>Docker 实现原理深度解析</title>
+
+
+
+</head>
+<style>
+body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
+#footer {margin-top:64px; text-align: center;font-size: small;}
+
+</style>
+
+<style>
+.postTitle{margin: auto 0;font-size:40px;font-weight:bold;}
+.title-right{display:flex;margin:auto 0 0 auto;}
+.title-right .circle{padding: 14px 16px;margin-right:8px;}
+#postBody{border-bottom: 1px solid var(--color-border-default);padding-bottom:36px;}
+#postBody hr{height:2px;}
+#cmButton{height:48px;margin-top:48px;}
+#comments{margin-top:64px;}
+.g-emoji{font-size:24px;}
+@media (max-width: 600px) {
+    body {padding: 8px;}
+    .postTitle{font-size:24px;}
+}
+
+</style>
+
+
+
+
+<body>
+    <div id="header">
+<h1 class="postTitle">Docker 实现原理深度解析</h1>
+<div class="title-right">
+    <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathHome" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+    <a href="https://github.com/hanlinyuanexplosivescholar/tech-reborn.github.io/issues/2" target="_blank" class="btn btn-invisible circle" title="Issue">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathIssue" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+
+    <a class="btn btn-invisible circle" onclick="modeSwitch();" title="切换主题">
+        <svg class="octicon" width="16" height="16" >
+            <path id="themeSwitch" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+
+</div>
+</div>
+    <div id="content">
+<div class="markdown-body" id="postBody"><h2>引言：超越“在我的机器上能跑”的问题</h2>
+<p>在软件开发领域，开发者们普遍面临一个令人沮丧的挑战，即“在我的机器上能跑”的问题。这种现象直接源于开发、测试和生产环境之间普遍存在的不一致性，以及应用程序依赖项之间的冲突。传统软件部署方式经常陷入所谓的“依赖地狱”，并需要冗余的配置，这导致了部署速度缓慢，并给应用程序的扩展性带来了挑战。这种“在我的机器上能跑”的问题远不止是一种简单的不便；它从根本上阻碍了高效的软件交付，对团队协作、测试流程和部署速度产生了负面影响。Docker 的核心价值主张正是源于其在大规模解决这种环境一致性挑战的能力。</p>
+<p>Docker 作为一种革命性的平台，通过将应用程序及其所有依赖项打包成名为“容器”的独立、可移植单元，提供了应对这些挑战的解决方案。这种容器化方法带来了诸多显著优势，包括跨环境的一致性、高度可移植性、接近原生性能以及卓越的扩展性。</p>
+<p>为了更好地理解容器的独特之处，有必要将其与传统虚拟机（VMs）进行对比。虚拟机提供的是一个包含完整操作系统的隔离环境，这使得它们更加“沉重”，启动速度也相对较慢。相比之下，容器则更为轻量级，它们共享宿主机的操作系统内核，并提供进程级别的隔离。这种核心差异带来了显著的影响：容器部署速度更快，资源消耗更少，并且具有更高的可移植性。容器与虚拟机之间最根本的区别在于，容器共享宿主机的内核，而虚拟机则运行完整的客户操作系统。这一设计选择是 Docker 实现其高效和高速优势的基石。这种架构上的差异直接影响了资源利用率和启动时间，使得容器成为微服务和持续集成/持续部署（CI/CD）流水线的理想选择，因为在这些场景中，快速扩展和高效率至关重要。</p>
+<p>Docker 的强大之处并非魔法，而是巧妙地整合了 Linux 内核的各项基本特性以及精心设计的架构。Docker 最初起源于 dotCloud 公司，并逐渐演变为专注于容器化技术，其发展历程建立在 LXC（Linux 容器）等现有 Linux 技术之上。</p>
+<h2>Linux 内核基础：容器化的基石</h2>
+<h3>命名空间：隔离的架构师</h3>
+<p>命名空间（Namespaces）是 Linux 内核的一项关键特性，它能够对内核资源进行分区，从而使不同的进程拥有自己独立的系统资源视图。Docker 正是利用命名空间为容器提供了这种隔离性。</p>
+<p>Docker 利用以下几种关键的命名空间来实现容器隔离：</p>
+<ul>
+<li>​**PID 命名空间（PID Namespace）**​：此命名空间隔离了进程 ID。这意味着容器内部的进程拥有自己独立的 PID 编号（从 1 开始），并且无法看到宿主机上的进程或同一宿主机上其他容器内的进程。</li>
+<li>​**网络命名空间（Network Namespace）**​：此命名空间提供了网络隔离，使每个容器拥有自己独立的网络栈，包括网络接口、IP 地址和路由表等。</li>
+<li>​**挂载命名空间（Mount Namespace）**​：此命名空间确保每个容器拥有自己独立的根文件系统，并可以独立挂载文件系统，从而为容器提供了独立的根目录的“错觉”。</li>
+<li>​**UTS 命名空间（UTS Namespace）**​：此命名空间允许容器拥有自己独立的主机名和域名。</li>
+<li>​**IPC 命名空间（IPC Namespace）**​：此命名空间隔离了进程间通信（IPC）机制，例如共享内存。</li>
+<li>​**用户命名空间（User Namespace）**​：此命名空间将容器内部的用户 ID 映射到宿主机上不同的用户 ID，从而显著提升了安全性。它允许容器内的非 root 用户在宿主机上拥有受限的权限。需要注意的是，并非所有 Docker 安装都默认启用此功能。</li>
+</ul>
+<p>命名空间的作用远不止简单的分离；它们是实现容器内部拥有完整操作系统“错觉”的核心机制，而从根本上说，容器仍然只是宿主机上的一个进程。这种“操作系统级别虚拟化”使得容器比虚拟化硬件的虚拟机更加轻量。用户命名空间的安全性影响（或其默认未启用）对于生产部署中容器的强化至关重要。</p>
+<h3>控制组（cgroups）：资源的守护者</h3>
+<p>控制组（cgroups）是 Linux 内核的另一项关键特性，它能够管理和分区一组进程的系统资源。Docker 利用 cgroups 来实现以下功能：</p>
+<ul>
+<li>​<strong>限制资源使用</strong>​：防止任何单个容器垄断 CPU、内存、磁盘 I/O 和网络带宽等资源。</li>
+<li>​<strong>隔离资源</strong>​：确保容器之间不会因资源争用而相互影响性能。</li>
+<li>​<strong>监控资源消耗</strong>​：实时跟踪资源使用情况（例如，通过 <code class="notranslate">docker stats</code> 命令）。</li>
+</ul>
+<p>cgroup 的类型包括 CPU、内存、块 I/O 和设备等。Docker 命令（如 <code class="notranslate">--memory</code> 和 <code class="notranslate">--cpus</code>）直接映射到 cgroup 配置，允许用户精确控制容器的资源分配。</p>
+<p>命名空间提供的是隔离，而 cgroups 则提供的是公平性和稳定性。如果没有 cgroups，一个行为异常的容器可能会耗尽宿主机或其他容器的资源，从而破坏整个系统的可靠性。这种资源治理对于多租户环境和确保可预测的应用程序性能至关重要。</p>
+<p>以下表格总结了命名空间和 cgroups 在 Docker 容器化中的不同但互补的作用：</p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>特性</th>
+<th>命名空间（Namespaces）</th>
+<th>控制组（cgroups）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>目的</strong></td>
+<td>资源隔离</td>
+<td>资源管理与分配</td>
+</tr>
+<tr>
+<td><strong>隔离/管理对象</strong></td>
+<td>进程 ID (PID)、网络接口、挂载点、主机名、IPC、用户</td>
+<td>CPU、内存、磁盘 I/O、网络带宽</td>
+</tr>
+<tr>
+<td><strong>机制</strong></td>
+<td>创建独立的系统资源视图</td>
+<td>限制和监控进程组的资源使用</td>
+</tr>
+<tr>
+<td><strong>类比</strong></td>
+<td>进程周围的虚拟墙壁</td>
+<td>资源配额和监控器</td>
+</tr>
+<tr>
+<td><strong>Docker 用途</strong></td>
+<td>提供容器隔离（例如，容器看到自己的<code class="notranslate">ps</code>输出）</td>
+<td>确保公平的资源共享，防止资源耗尽</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<h2>Docker 的分层文件系统：高效运行</h2>
+<h3>联合文件系统（UFS）：效率的堆叠</h3>
+<p>Docker 镜像采用分层构建方法，Dockerfile 中的每条指令都会创建一个新的只读层。联合文件系统（UFS）是实现这一机制的技术，它允许将多个文件系统（层）透明地叠加在一起，并呈现为一个统一的视图。</p>
+<p>在 Docker 中，UFS 的组成部分包括：<code class="notranslate">lowerdir</code>（只读镜像层）、<code class="notranslate">upperdir</code>（可写的容器层）和 <code class="notranslate">merged</code>（呈现给容器的统一视图）。常见的存储驱动程序包括 OverlayFS 和 Overlay2，其中 Overlay2 是推荐的、更高效的选择。</p>
+<p>分层文件系统，由 UFS 实现，是 Docker 镜像效率的核心机制。它通过在多个镜像和容器之间共享通用层来显著减少存储占用，并通过仅传输或重建更改的层来大幅加快镜像构建和分发速度。</p>
+<h3>写时复制（CoW）：智能节约</h3>
+<p>写时复制（Copy-on-Write, CoW）是一种优化文件共享和复制的策略。当容器需要修改只读层中的文件时，CoW 的工作方式是：该文件首先被复制到容器的可写 <code class="notranslate">upperdir</code> 层，然后对副本进行修改。原始文件在只读层中保持不变。</p>
+<p>文件删除的处理方式也很有趣：在可写层中创建一个“白化文件”（whiteout file）来遮蔽原始文件，而不是从只读镜像层中实际删除它。类似地，“不透明目录”（opaque directories）用于目录删除。CoW 的优势在于最大限度地减少了 I/O 操作，降低了后续层的大小，并允许多个容器共享相同的基本镜像，同时保持各自独特的数据状态。</p>
+<p>CoW 是使 UFS 在实践中高效运行的操作原理。它确保了镜像层的“只读”特性得以维持，同时仍允许容器作为可变环境运行。这种机制对于 Docker 的资源优化以及从同一镜像快速启动容器而无需复制整个文件系统至关重要。</p>
+<h3>镜像哈希与缓存：确保可复现性和速度</h3>
+<p>每个 Docker 镜像层都根据其内容被分配一个唯一的标识符（哈希或摘要）。这种哈希机制实现了高效的层缓存：如果层的內容（例如，Dockerfile 指令）保持不变，Docker 可以重用现有的缓存层，从而显著减少构建时间和资源消耗。为了优化缓存，Dockerfile 最佳实践建议将多个 <code class="notranslate">RUN</code> 命令合并，并将频繁更改的指令放在后面。</p>
+<p>哈希和缓存对于 Docker 实现可复现性和快速迭代的承诺至关重要。它们确保相同的构建指令产生相同且可验证的镜像，并且开发人员可以快速重建应用程序而无需重复冗余步骤，从而加速 CI/CD 流水线。</p>
+<h3>镜像和容器的磁盘存储</h3>
+<p>在 Linux 系统上，所有 Docker 相关数据（包括镜像、容器和卷）都存储在 <code class="notranslate">/var/lib/docker</code> 目录下，这被称为根目录。如果使用 <code class="notranslate">overlay2</code> 驱动程序，镜像相关数据通常存储在 <code class="notranslate">/var/lib/docker/overlay2</code> 的子目录中。对于 macOS 和 Windows 上的 Docker Desktop，镜像存储在一个由虚拟机管理的大型磁盘镜像文件中。需要强调的是，不建议手动修改这些目录中的文件。了解物理存储位置有助于调试磁盘空间问题，并强调了 Docker 存储的受管理性质。</p>
+<p>以下是 Docker 镜像层和写时复制的简化概念说明：</p>
+<ul>
+<li>​**基础镜像层 (只读)**​：这些是镜像的最底层，包含操作系统、运行时和基本库。它们是不可变的。</li>
+<li>​**中间镜像层 (只读)**​：Dockerfile 中的每个 <code class="notranslate">RUN</code>、<code class="notranslate">COPY</code>、<code class="notranslate">ADD</code> 等指令都会在现有层之上创建一个新的只读层。这些层也存储在磁盘上，并由哈希值唯一标识。</li>
+<li>​**容器可写层 (读写)**​：当一个容器从镜像启动时，Docker 会在所有只读镜像层之上添加一个薄薄的可写层。所有对容器文件系统的修改（如创建、修改、删除文件）都发生在这个层。</li>
+<li>​**统一视图 (合并)**​：联合文件系统将所有只读镜像层和容器的可写层合并，呈现给容器一个单一、连贯的文件系统视图。</li>
+<li>​<strong>写时复制 (CoW) 工作原理</strong>​：
+<ul>
+<li>​<strong>读取未修改的文件</strong>​：如果容器需要读取一个在只读镜像层中存在的文件，它会直接从该层读取，无需复制。</li>
+<li>​<strong>修改文件</strong>​：当容器尝试修改一个只读层中的文件时，CoW 机制会触发。该文件首先被“复制向上”到容器的可写层。然后，所有修改都在这个复制的副本上进行，原始文件在只读层中保持不变。</li>
+<li>​<strong>删除文件</strong>​：当容器删除一个文件时，并不会从只读镜像层中实际删除它。相反，一个特殊的“白化文件”会在容器的可写层中创建，它会遮蔽掉只读层中同名的文件，使其在容器的统一视图中不可见。</li>
+<li>​<strong>添加新文件</strong>​：新文件直接写入容器的可写层。</li>
+</ul>
+</li>
+</ul>
+<p>这种分层和 CoW 策略使得 Docker 镜像非常高效，因为它们可以共享底层数据，并且只有发生更改的部分才需要存储额外的空间。</p>
+<h2>Docker 引擎：编排“魔法”</h2>
+<h3>客户端-服务器架构：命令中心</h3>
+<p>Docker 采用客户端-服务器架构：Docker 客户端（CLI）是用户与 Docker 交互的主要界面。Docker CLI 通过 REST API（或 gRPC API）与 Docker 守护进程（<code class="notranslate">dockerd</code>）通信，通信通常通过 UNIX 套接字或网络接口进行。值得注意的是，客户端可以是远程的，这使得跨不同机器管理 Docker 成为可能。</p>
+<p>客户端-服务器架构将容器管理的复杂性从用户那里抽象出来。这种设计允许灵活的部署（本地 CLI、远程守护进程），并使丰富的工具生态系统（如 Docker Compose）能够通过 API 以编程方式与 Docker 引擎交互。</p>
+<h3>Docker 守护进程（<code class="notranslate">dockerd</code>）：操作的大脑</h3>
+<p><code class="notranslate">dockerd</code> 是一个长期运行的服务，负责管理所有 Docker 对象（包括镜像、容器、网络和卷）以及构建、运行和分发等操作。它的职责包括处理客户端请求，检查本地是否存在所需镜像，如果不存在则从注册中心拉取，并启动容器创建和网络设置。守护进程是核心编排器，将高级用户命令转换为低级系统调用，从而使复杂的容器化过程变得可管理。</p>
+<h3>容器运行时：执行者（containerd &amp; runc）</h3>
+<p>Docker 守护进程并不直接在最低层运行容器，而是将此任务委托给符合 OCI（开放容器倡议）标准的容器运行时。</p>
+<ul>
+<li>​**<code class="notranslate">containerd</code>**​：<code class="notranslate">containerd</code> 被定位为一个更高级别的容器运行时，并已捐赠给 CNCF（云原生计算基金会）。它专注于基本的容器管理任务，包括生命周期管理（创建、启动、停止、删除）、镜像分发和存储。它在命名空间和 cgroups 等复杂的内核特性之上提供了一个抽象层，从而简化了高级工具的容器管理。<code class="notranslate">containerd</code> 代表了 Docker 对标准化和模块化的承诺。通过抽象低级运行时细节，它允许 Docker 专注于开发人员体验和更广泛的生态系统工具，同时确保与其他符合 OCI 标准的系统（如 Kubernetes）的互操作性。</li>
+<li>​**<code class="notranslate">runc</code>**​：<code class="notranslate">runc</code> 是一个低级别的命令行工具，它直接与 Linux 内核交互，以创建和运行隔离的容器进程。它实现了 OCI 运行时规范，使用 <code class="notranslate">clone()</code> 系统调用和命名空间标志，并配置 cgroups 以实现隔离和资源限制。<code class="notranslate">runc</code> 还负责处理容器的标准输入/输出（用于 <code class="notranslate">docker logs</code>、<code class="notranslate">docker exec -it</code> 等命令）以及跟踪退出代码。<code class="notranslate">runc</code> 是 Docker 堆栈最底层的“工作蜜蜂”，直接与内核交互。它作为独立的、符合 OCI 标准的可执行文件存在，确保了运行容器的基本行为是标准化的和可移植的，无论上层容器平台是什么。这种模块化允许使用替代运行时，并为容器生态系统提供了更大的灵活性。</li>
+</ul>
+<h3>Docker 注册中心：镜像分发网络</h3>
+<p>Docker 注册中心是用于存储和分发 Docker 镜像的仓库。Docker Hub 是最受欢迎的公共注册中心，此外也存在私有注册中心。<code class="notranslate">docker pull</code> 命令用于检索镜像，而 <code class="notranslate">docker push</code> 命令用于上传镜像。注册中心对于镜像共享、团队协作以及在开发、测试和生产环境之间保持一致性至关重要。</p>
+<h2>容器网络：连接隔离的世界</h2>
+<h3>容器网络模型（CNM）与 Libnetwork</h3>
+<p>容器网络模型（CNM）是 Docker 定义网络设计方式的框架，其核心构建块包括沙盒（隔离的网络栈）、端点（虚拟接口）和网络（软件桥接）。Libnetwork 是 CNM 的实际开源实现，由 Docker 用于提供网络连接、服务发现和负载均衡功能。CNM 和 Libnetwork 为 Docker 管理容器网络提供了一种标准化、可扩展的方式，抽象了底层操作系统特定的细节（如 <code class="notranslate">iptables</code> 操作），并实现了服务发现和负载均衡等高级功能。</p>
+<h3>关键网络驱动：定制连接</h3>
+<p>Docker 利用宿主机的网络栈并通过操作 <code class="notranslate">iptables</code> 规则来路由流量，同时容器获得自己的网络命名空间以实现隔离。Docker 提供了多种网络驱动程序来满足不同的连接需求：</p>
+<ul>
+<li>​**桥接网络（Bridge Network）**​：
+<ul>
+<li>这是单宿主机上独立容器的默认网络类型。</li>
+<li>它创建一个私有内部网络，连接到同一桥接网络的容器可以相互通信。</li>
+<li><strong>用户自定义桥接网络</strong>优于默认桥接网络：它们提供容器间的自动 DNS 解析（容器可以通过名称解析彼此），更好的隔离性（只有明确连接到网络的容器才能通信），并允许动态连接/断开。</li>
+<li>默认桥接网络需要使用遗留的 <code class="notranslate">--link</code> 选项或手动修改 <code class="notranslate">/etc/hosts</code> 文件才能进行名称解析。</li>
+</ul>
+</li>
+<li>​**宿主机网络（Host Network）**​：
+<ul>
+<li>此模式取消了网络隔离；容器直接共享宿主机的网络栈。</li>
+<li>容器不获取自己的 IP 地址；端口映射会被忽略。</li>
+<li>当需要优化性能或容器需要处理大量端口时非常有用，因为它避免了网络地址转换（NAT）的开销。</li>
+<li>由于消除了网络隔离，其安全性较低。在 Docker Engine 上仅支持 Linux 容器。</li>
+</ul>
+</li>
+<li>​**覆盖网络（Overlay Network）**​：
+<ul>
+<li>启用多宿主机网络，主要与 Docker Swarm 配合使用。</li>
+<li>在多个 Docker 宿主机之间创建分布式网络，允许不同机器上的容器安全地通信。</li>
+<li>为分布式应用程序提供内置的负载均衡、服务发现和容错能力。</li>
+<li>需要通过 <code class="notranslate">docker swarm init</code> 命令进行设置。</li>
+</ul>
+</li>
+<li>​<strong>Macvlan/IPvlan</strong>​：Macvlan 为每个容器分配一个 MAC 地址，使其在网络中表现得像一个物理设备。IPvlan 类似，但对于高密度环境更高效。</li>
+<li>​**无网络（None Network）**​：完全禁用容器的网络功能。这对于最大程度的安全隔离或手动网络配置非常有用。</li>
+</ul>
+<p>Docker 多样化的网络驱动程序体现了其在适应各种部署场景方面的灵活性，从单宿主机开发到复杂的多宿主机分布式系统。网络驱动程序的选择直接影响隔离性、性能和可扩展性，需要根据应用程序的需求进行仔细考虑。从默认桥接到用户自定义桥接的转变，也表明了 Docker 在隔离性和可管理性方面的演进。</p>
+<p>以下表格概述了 Docker 的主要网络驱动程序：</p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>网络驱动程序</th>
+<th>原理</th>
+<th>隔离级别</th>
+<th>用例</th>
+<th>关键特性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>桥接</strong></td>
+<td>单宿主机上的软件桥接</td>
+<td>进程级（网络内）</td>
+<td>单宿主机应用、开发、测试</td>
+<td>默认，推荐使用用户自定义桥接（DNS、隔离）</td>
+</tr>
+<tr>
+<td><strong>宿主机</strong></td>
+<td>共享宿主机的网络栈</td>
+<td>无</td>
+<td>性能敏感型、大范围端口需求</td>
+<td>无独立 IP，端口映射被忽略，仅限 Linux</td>
+</tr>
+<tr>
+<td><strong>覆盖</strong></td>
+<td>跨宿主机的分布式网络</td>
+<td>多宿主机</td>
+<td>Docker Swarm、微服务、分布式应用</td>
+<td>加密、服务发现、负载均衡</td>
+</tr>
+<tr>
+<td><strong>Macvlan</strong></td>
+<td>容器获取自己的 MAC 地址</td>
+<td>表现为物理设备</td>
+<td>遗留应用、完全网络集成</td>
+<td>需要网络配置</td>
+</tr>
+<tr>
+<td><strong>无​</strong></td>
+<td>无网络接口</td>
+<td>完全</td>
+<td>最大隔离、安全性、手动配置</td>
+<td>无通信，无 IP 地址</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<h2>数据持久化：使容器有状态</h2>
+<h3>容器的短暂性</h3>
+<p>默认情况下，写入容器可写层的数据在容器停止或删除后会丢失。理解这种短暂性是理解为什么需要持久化解决方案的前提。</p>
+<h3>卷（Volumes）：Docker 管理的持久存储</h3>
+<p>卷是首选的数据持久化机制，由 Docker 守护进程直接管理。卷数据存储在宿主机的本地文件系统上（在 Linux 上通常位于 <code class="notranslate">/var/lib/docker/volumes/</code>），但与非 Docker 进程隔离。</p>
+<p>卷的主要优势在于：它们独立于容器生命周期，可以在多个容器之间共享，并且是数据库和应用程序数据的理想选择。常用的 <code class="notranslate">docker volume</code> 命令包括 <code class="notranslate">create</code>、<code class="notranslate">ls</code>、<code class="notranslate">rm</code> 和 <code class="notranslate">prune</code>。卷为 Docker 中的有状态应用程序提供了健壮且可移植的解决方案。其由 Docker 管理的特性简化了备份、迁移和共享，使其适用于数据完整性和可用性至关重要的生产环境。</p>
+<h3>绑定挂载（Bind Mounts）：宿主机与容器的直接链接</h3>
+<p>绑定挂载是在宿主机上的特定文件或目录与容器内部路径之间建立的直接链接。需要强调的是，绑定挂载不受 Docker 隔离，这意味着在宿主机或容器中的更改会立即反映在两端，并且非 Docker 进程也可以修改它们。</p>
+<p>常见用例包括：在开发过程中共享源代码、注入配置文件（例如 <code class="notranslate">/etc/resolv.conf</code>）或持久化构建产物。然而，绑定挂载也存在局限性：它们与宿主机文件系统结构紧密耦合，可移植性较差，并且由于直接访问宿主机可能带来潜在的安全隐患。绑定挂载提供了灵活性和直接访问能力，这使其在开发工作流和特定配置需求中极具价值。然而，它们缺乏 Docker 管理和对宿主机的依赖性，使得它们不如卷适合用于可移植的、生产级别的持久化数据。</p>
+<h3>tmpfs 挂载：内存中的临时存储</h3>
+<p><code class="notranslate">tmpfs</code> 挂载是一种临时存储机制，它将文件直接存储在宿主机的内存（RAM）中，确保数据永远不会写入磁盘。它们具有短暂性：当容器停止、重启或宿主机重启时，数据会丢失。</p>
+<p><code class="notranslate">tmpfs</code> 挂载的用例包括：存储临时敏感数据（如凭据）、缓存中间数据，或减少非持久状态的磁盘 I/O。其局限性包括：仅支持 Linux，且无法在容器之间共享。<code class="notranslate">tmpfs</code> 挂载为高性能、非持久性数据需求提供了专门的解决方案，尤其是在安全性（数据不触及磁盘）或 I/O 速度至关重要的场景。</p>
+<p>以下表格对比了 Docker 的主要数据持久化解决方案：</p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>特性</th>
+<th>卷（Volumes）</th>
+<th>绑定挂载（Bind Mounts）</th>
+<th>tmpfs 挂载（tmpfs Mounts）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>持久性</strong></td>
+<td>是（由 Docker 管理）</td>
+<td>是（与宿主机路径绑定）</td>
+<td>否（仅内存中）</td>
+</tr>
+<tr>
+<td><strong>管理</strong></td>
+<td>Docker 管理</td>
+<td>宿主机管理</td>
+<td>宿主机管理（内核）</td>
+</tr>
+<tr>
+<td><strong>位置</strong></td>
+<td><code class="notranslate">/var/lib/docker/volumes</code>(Linux)</td>
+<td>任意宿主机路径</td>
+<td>宿主机 RAM</td>
+</tr>
+<tr>
+<td><strong>共享</strong></td>
+<td>多个容器</td>
+<td>宿主机与容器</td>
+<td>否</td>
+</tr>
+<tr>
+<td><strong>可移植性</strong></td>
+<td>高</td>
+<td>低（依赖宿主机）</td>
+<td>高（但短暂）</td>
+</tr>
+<tr>
+<td><strong>用例</strong></td>
+<td>数据库、应用数据、缓存</td>
+<td>开发源代码、配置、构建产物</td>
+<td>敏感数据、临时文件、高 I/O 需求</td>
+</tr>
+<tr>
+<td><strong>安全性</strong></td>
+<td>与宿主机进程隔离</td>
+<td>直接访问宿主机（潜在风险）</td>
+<td>数据不写入磁盘</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<h2>结论：深入理解的力量</h2>
+<p>Docker 的变革性优势源于其核心实现原理的巧妙协同。Linux 内核特性（命名空间用于隔离，cgroups 用于资源控制）、高效的分层文件系统（UFS、写时复制、哈希）、模块化的 Docker 引擎（客户端、守护进程、<code class="notranslate">containerd</code>、<code class="notranslate">runc</code>）、灵活的网络功能以及健壮的数据持久化机制，共同构成了 Docker 强大的基础。这些原则共同解决了“在我的机器上能跑”的问题，确保了环境一致性，增强了可移植性，提高了效率，并促进了应用程序的扩展性。</p>
+<p>深入理解 Docker 的实现原理，能够帮助用户更有效地排除故障，优化容器性能和资源利用，为容器化应用程序做出明智的架构决策，并通过理解隔离边界来增强安全态势。这些底层原理的累积效应，不仅仅是提供了一个更好的工具，更是从根本上改变了软件的开发、部署和管理方式。这种理解将用户从仅仅使用 Docker 命令提升到精通容器化，使他们能够构建更具弹性、更高效和更可扩展的系统。</p>
+<p>鼓励所有计算机专业人士继续探索和应用这些知识，以简化开发工作流程，并确保应用程序在现代云原生环境中蓬勃发展。</p></div>
+<div style="font-size:small;margin-top:8px;float:right;"></div>
+
+<button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
+<div class="comments" id="comments"></div>
+
+</div>
+    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io">reborn's technical blog</a></div>
+<div id="footer2">
+    <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
+</div>
+
+<script>
+var now=new Date();
+document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+
+if(""!=""){
+    var startSite=new Date("");
+    var diff=now.getTime()-startSite.getTime();
+    var diffDay=Math.floor(diff/(1000*60*60*24));
+    document.getElementById("runday").innerHTML="网站运行"+diffDay+"天"+" • ";
+}
+</script></div>
+</body>
+<script>
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z'};
+var utterancesLoad=0;
+
+let themeSettings={
+    "dark": ["dark","moon","#00f0ff","dark-blue"],
+    "light": ["light","sun","#ff5000","github-light"],
+    "auto": ["auto","sync","","preferred-color-scheme"]
+};
+function changeTheme(mode, icon, color, utheme){
+    document.documentElement.setAttribute("data-color-mode",mode);
+    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
+    document.getElementById("themeSwitch").parentNode.style.color=color;
+    if(utterancesLoad==1){utterancesTheme(utheme);}
+}
+function modeSwitch(){
+    let currentMode=document.documentElement.getAttribute('data-color-mode');
+    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
+    localStorage.setItem("meek_theme", newMode);
+    if(themeSettings[newMode]){
+        changeTheme(...themeSettings[newMode]);
+    }
+}
+function utterancesTheme(theme){
+    const message={type:'set-theme',theme: theme};
+    const iframe=document.getElementsByClassName('utterances-frame')[0];
+    iframe.contentWindow.postMessage(message,'https://utteranc.es');
+}
+if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
+console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
+</script>
+
+<script>
+document.getElementById("pathHome").setAttribute("d",IconList["home"]);
+document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
+
+
+
+function openComments(){
+    cm=document.getElementById("comments");
+    cmButton=document.getElementById("cmButton");
+    cmButton.innerHTML="loading";
+    span=document.createElement("span");
+    span.setAttribute("class","AnimatedEllipsis");
+    cmButton.appendChild(span);
+
+    script=document.createElement("script");
+    script.setAttribute("src","https://utteranc.es/client.js");
+    script.setAttribute("repo","hanlinyuanexplosivescholar/tech-reborn.github.io");
+    script.setAttribute("issue-term","title");
+    
+    if(localStorage.getItem("meek_theme")=="dark"){script.setAttribute("theme","dark-blue");}
+    else if(localStorage.getItem("meek_theme")=="light") {script.setAttribute("theme","github-light");}
+    else{script.setAttribute("theme","preferred-color-scheme");}
+    
+    script.setAttribute("crossorigin","anonymous");
+    script.setAttribute("async","");
+    cm.appendChild(script);
+
+    int=self.setInterval("iFrameLoading()",200);
+}
+
+function iFrameLoading(){
+    var utterances=document.getElementsByClassName('utterances');
+    if(utterances.length==1){
+        if(utterances[0].style.height!=""){
+            utterancesLoad=1;
+            int=window.clearInterval(int);
+            document.getElementById("cmButton").style.display="none";
+            console.log("utterances Load OK");
+        }
+    }
+}
+
+
+
+</script>
+
+
+</html>
