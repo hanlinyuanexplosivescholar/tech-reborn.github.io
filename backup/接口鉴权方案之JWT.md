@@ -172,3 +172,85 @@ JWT的无状态性是其最显著的优势，它使得系统具有高度可伸�
 然而，JWT并非没有局限。令牌大小、撤销机制的复杂性、敏感信息泄露的风险以及密钥管理的重要性，都是在采用JWT时必须认真考虑的挑战。特别是像`alg: "none"`漏洞和算法混淆等常见安全漏洞，要求开发者必须对JWT的内部工作原理有深入的理解，并采取严格的预防措施。
 
 综上所述，JWT是现代Web开发中一个强大且广泛采用的认证机制。但要充分发挥其优势并确保系统安全，关键在于理解其核心原理、权衡其利弊，并严格遵循安全最佳实践。只有通过勤勉和细致的实施，才能确保JWT在您的应用中发挥其应有的价值。
+
+
+
+实战案例  
+1，通过管理模块获取令牌
+```    
+public BaseResponse getAccessToken(TokenRequest request) {
+        LocalDateTime requestTime = LocalDateTime.ofEpochSecond(request.getTimestamp(), 0, ZoneOffset.of("+8"));
+        if (Duration.between(requestTime, LocalDateTime.now()).toMinutes() > 5L) {
+            return BaseResponse.error(ErrorEnum.ERROR.getCode(),messageSource.getMessage("4003", null, LocaleContextHolder.getLocale()));
+        }
+        SystemInfoEntity systemInfo = authQueryMapper.getSystemInfoBySyskey(request.getSysKey());
+        if (Objects.isNull(systemInfo)) {
+           return BaseResponse.error(ErrorEnum.ERROR.getCode(),messageSource.getMessage("4001", null, LocaleContextHolder.getLocale()));
+        }
+        //校验secret是否正确
+        try {
+            String secret = MD5.md5Bit32Lower(systemInfo.getSystemSecret() + request.getTimestamp());
+            log.info("{}系统secret为：{}", systemInfo.getSystemName(), secret);
+            if (StringUtils.isBlank(secret) || !secret.equals(request.getSecret())) {
+                return BaseResponse.error(ErrorEnum.ERROR.getCode(),messageSource.getMessage("4002", null, LocaleContextHolder.getLocale()));
+            }
+        } catch (UnsupportedEncodingException | NoSuchAlgorithmException e) {
+            log.error("对sysScret加密报错：" + e.getMessage());
+            return BaseResponse.error(ErrorEnum.ERROR.getCode(),messageSource.getMessage("4002", null, LocaleContextHolder.getLocale()));
+        }
+        //查询有权限的api
+        List<String> apiPathList = authQueryMapper.getApiPathListById(systemInfo.getId());
+        Calendar expiresAt = Calendar.getInstance();
+        expiresAt.add(Calendar.MINUTE, TOEKN_EXPIRES);
+        String accessToken = JWT.create()
+                .withClaim("sysKey", request.getSysKey())
+                .withClaim("authPath", Strings.join(apiPathList, ','))
+                .withIssuer("it-settlement-account")
+                .withExpiresAt(expiresAt.getTime())
+                .sign(Algorithm.HMAC256(JWT_SECRET));
+
+        log.info("token：{}", accessToken);
+        Map<Object, Object> map = new HashMap<>();
+        map.put("token",accessToken);
+        return BaseResponse.ok(map);
+    } 
+``` 
+
+
+2，调用业务模块校验令牌
+
+```     
+@Before("authenticationPointCut()")
+    public void checkJwtTokenValid(JoinPoint point) {
+        MethodInvocationProceedingJoinPoint mjp = (MethodInvocationProceedingJoinPoint) point;
+        MethodSignature signature = (MethodSignature) mjp.getSignature();
+        Method method = signature.getMethod();
+        //authorization:Bearer token
+        String authorization = request.getHeader("Authorization");
+        String requestURI = request.getRequestURI();
+        String jwtToken ="";
+        if (authorization != null && authorization.startsWith("Bearer")) {
+            jwtToken = StringUtils.substringAfter(authorization," ");
+        }else {
+            throw new RuntimeException("4005");
+        }
+        //验证JWT
+        JWTVerifier jwtVerifier = JWT.require(Algorithm.HMAC256(JWT_SECRET)).build();
+        String syskey, authPath;
+        log.info("请求接口" + requestURI);
+        try {
+            DecodedJWT decodedJWT = jwtVerifier.verify(jwtToken);
+            log.info(decodedJWT.getExpiresAt().toString());
+            syskey = decodedJWT.getClaim("sysKey").asString();
+            authPath = decodedJWT.getClaim("authPath").asString();
+        } catch (TokenExpiredException e) {
+            log.info("4004" + requestURI);
+            throw new RuntimeException("4004");
+        }
+        if (!authPath.contains(requestURI)) {
+            log.info("4001" + requestURI);
+            throw new RuntimeException("4001");
+        }
+        log.info("{}系统token校验成功", syskey);
+    }  
+``` 
