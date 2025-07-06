@@ -112,13 +112,13 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
 <hr>
 <h2>二、主流限流算法概述</h2>
 <p>在深入探讨限流算法的细节之前，下表提供了一个高层次的对比，帮助读者快速理解不同算法的核心特性和权衡。<br>
-<a target="_blank" rel="noopener noreferrer nofollow" href="https://private-user-images.githubusercontent.com/68176923/462897447-8f2148a4-3f28-493d-9ef3-f4a4162ca332.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTE3OTY4NjQsIm5iZiI6MTc1MTc5NjU2NCwicGF0aCI6Ii82ODE3NjkyMy80NjI4OTc0NDctOGYyMTQ4YTQtM2YyOC00OTNkLTllZjMtZjRhNDE2MmNhMzMyLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA3MDYlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNzA2VDEwMDkyNFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTgyMDYzYzMzNTRiMGE0YzlmMWU4NzkxOTg4YzhkYTVmNjVhYjU3ZjQ0YjIwZGVlZGIwNWZjMjc4MzMwNjlkZTcmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.lZstS-ipjHy3ii1_pcwklBJYFrl5Gy4b6sWonblQ3_8"><img src="https://private-user-images.githubusercontent.com/68176923/462897447-8f2148a4-3f28-493d-9ef3-f4a4162ca332.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTE3OTY4NjQsIm5iZiI6MTc1MTc5NjU2NCwicGF0aCI6Ii82ODE3NjkyMy80NjI4OTc0NDctOGYyMTQ4YTQtM2YyOC00OTNkLTllZjMtZjRhNDE2MmNhMzMyLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA3MDYlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNzA2VDEwMDkyNFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTgyMDYzYzMzNTRiMGE0YzlmMWU4NzkxOTg4YzhkYTVmNjVhYjU3ZjQ0YjIwZGVlZGIwNWZjMjc4MzMwNjlkZTcmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.lZstS-ipjHy3ii1_pcwklBJYFrl5Gy4b6sWonblQ3_8" alt="Image" style="max-width: 100%; height: auto;"></a></p>
+<a target="_blank" rel="noopener noreferrer" href="https://github.com/user-attachments/assets/182c7017-3cac-4555-b335-3f2aa4a4ac9e"><img src="https://github.com/user-attachments/assets/182c7017-3cac-4555-b335-3f2aa4a4ac9e" alt="Image" style="max-width: 100%; height: auto;"></a></p>
 <p>在流量管理中，存在一个从优先考虑完美平滑、可预测输出到适应甚至利用突发流量的连续谱。​<strong>漏桶算法</strong>​（严格输出，丢弃突发）与​<strong>令牌桶算法</strong>​（允许突发，灵活）以及​<strong>固定/滑动窗口算法</strong>​（窗口边缘的突发性与更平滑的处理）之间的对比，揭示了限流设计中的核心权衡。这不仅仅是功能上的差异，更是流量管理中一个根本性的哲学选择，直接影响用户体验和资源利用。一个为平滑流量设计的系统可能会拒绝合法的突发请求，从而让用户感到沮丧。反之，一个允许突发的系统可能会经历临时的资源峰值。因此，“最佳”算法并非普适的；它完全取决于应用程序的具体流量模式和业务需求。这突出了进行仔细的流量模式分析的必要性。</p>
 <p>限流算法的演进也呈现出由边缘情况驱动的从简单到复杂的模式。固定窗口算法虽然简单，但存在“窗口边缘突发性”问题。滑动窗口日志算法通过跟踪单个时间戳直接解决了这个问题，提供了更精确的限流。然而，日志方法可能占用大量内存。这促成了滑动窗口计数器的发展，它通过使用两个固定窗口来近似日志行为，从而优化了内存使用。这种清晰的演进路径展示了算法开发中的迭代设计过程：识别一个简单解决方案，发现其边缘情况和局限性，开发一个更复杂但更健壮的解决方案，然后针对实际约束（如内存）优化健壮的解决方案。这种模式在计算机科学和系统设计中很常见，强调了简单的解决方案往往伴随着隐藏的成本或局限性，这些成本和局限性在负载或特定流量模式下才会显现出来，从而推动了持续的创新。</p>
 <hr>
 <h2>三、限流算法的对比与选择</h2>
 <h3>性能、公平性、资源消耗与突发流量处理能力对比</h3>
-<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://private-user-images.githubusercontent.com/68176923/462897447-8f2148a4-3f28-493d-9ef3-f4a4162ca332.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTE3OTY4NjQsIm5iZiI6MTc1MTc5NjU2NCwicGF0aCI6Ii82ODE3NjkyMy80NjI4OTc0NDctOGYyMTQ4YTQtM2YyOC00OTNkLTllZjMtZjRhNDE2MmNhMzMyLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA3MDYlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNzA2VDEwMDkyNFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTgyMDYzYzMzNTRiMGE0YzlmMWU4NzkxOTg4YzhkYTVmNjVhYjU3ZjQ0YjIwZGVlZGIwNWZjMjc4MzMwNjlkZTcmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.lZstS-ipjHy3ii1_pcwklBJYFrl5Gy4b6sWonblQ3_8"><img src="https://private-user-images.githubusercontent.com/68176923/462897447-8f2148a4-3f28-493d-9ef3-f4a4162ca332.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTE3OTY4NjQsIm5iZiI6MTc1MTc5NjU2NCwicGF0aCI6Ii82ODE3NjkyMy80NjI4OTc0NDctOGYyMTQ4YTQtM2YyOC00OTNkLTllZjMtZjRhNDE2MmNhMzMyLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA3MDYlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNzA2VDEwMDkyNFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTgyMDYzYzMzNTRiMGE0YzlmMWU4NzkxOTg4YzhkYTVmNjVhYjU3ZjQ0YjIwZGVlZGIwNWZjMjc4MzMwNjlkZTcmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.lZstS-ipjHy3ii1_pcwklBJYFrl5Gy4b6sWonblQ3_8" alt="Image" style="max-width: 100%; height: auto;"></a></p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://github.com/user-attachments/assets/431a5128-7c2d-42b8-8c14-68cbf3df5cd4"><img src="https://github.com/user-attachments/assets/431a5128-7c2d-42b8-8c14-68cbf3df5cd4" alt="Image" style="max-width: 100%; height: auto;"></a></p>
 <h3>如何根据业务需求选择合适的算法</h3>
 <p>选择合适的限流算法是一个关键决策，需要综合考虑多种因素，以确保系统在保护自身的同时，也能提供良好的用户体验。</p>
 <p>首先，<strong>流量模式分析</strong>是选择算法最关键的第一步。系统设计者必须深入观察用户行为、流量频率和高峰时段。流量是可预测的还是突发性的？是否存在明显的流量高峰期？通过分析历史和实时数据，可以更准确地平衡系统保护与用户需求。</p>
@@ -232,7 +232,11 @@ console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 
 <script>
 document.getElementById("pathHome").setAttribute("d",IconList["home"]);
 document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
-
+cmButton=document.getElementById("cmButton");
+    span=document.createElement("span");
+    span.setAttribute("class","Counter");
+    span.innerHTML="1";
+    cmButton.appendChild(span);
 
 
 function openComments(){
