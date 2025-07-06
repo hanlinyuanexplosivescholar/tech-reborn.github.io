@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html data-color-mode="light" data-dark-theme="dark" data-light-theme="light" lang="zh-CN">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
+    
+    <link rel="icon" href="https://avatars.githubusercontent.com/u/68176923?v=4"><script>
+        let theme = localStorage.getItem("meek_theme") || "light";
+        document.documentElement.setAttribute("data-color-mode", theme);
+    </script>
+<meta name="description" content="## I. 引言：驾驭分布式系统的复杂性
+
+在当今互联互通的世界中，应用程序很少仅限于一台服务器。">
+<meta property="og:title" content="CAP理论详解与应用">
+<meta property="og:description" content="## I. 引言：驾驭分布式系统的复杂性
+
+在当今互联互通的世界中，应用程序很少仅限于一台服务器。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/CAP-li-lun-xiang-jie-yu-ying-yong.html">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/68176923?v=4">
+<title>CAP理论详解与应用</title>
+
+
+
+</head>
+<style>
+body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
+#footer {margin-top:64px; text-align: center;font-size: small;}
+
+</style>
+
+<style>
+.postTitle{margin: auto 0;font-size:40px;font-weight:bold;}
+.title-right{display:flex;margin:auto 0 0 auto;}
+.title-right .circle{padding: 14px 16px;margin-right:8px;}
+#postBody{border-bottom: 1px solid var(--color-border-default);padding-bottom:36px;}
+#postBody hr{height:2px;}
+#cmButton{height:48px;margin-top:48px;}
+#comments{margin-top:64px;}
+.g-emoji{font-size:24px;}
+@media (max-width: 600px) {
+    body {padding: 8px;}
+    .postTitle{font-size:24px;}
+}
+
+</style>
+
+
+
+
+<body>
+    <div id="header">
+<h1 class="postTitle">CAP理论详解与应用</h1>
+<div class="title-right">
+    <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathHome" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+    <a href="https://github.com/hanlinyuanexplosivescholar/tech-reborn.github.io/issues/3" target="_blank" class="btn btn-invisible circle" title="Issue">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathIssue" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+
+    <a class="btn btn-invisible circle" onclick="modeSwitch();" title="切换主题">
+        <svg class="octicon" width="16" height="16" >
+            <path id="themeSwitch" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+
+</div>
+</div>
+    <div id="content">
+<div class="markdown-body" id="postBody"><h2>I. 引言：驾驭分布式系统的复杂性</h2>
+<p>在当今互联互通的世界中，应用程序很少仅限于一台服务器。从社交媒体平台到全球电子商务网站，分布式系统已成为现代计算的支柱。然而，构建这些系统带来了独特的挑战，尤其是在数据管理方面。确保数据始终正确、始终可访问且能抵御多台互连机器的故障，并非易事。正是在这种背景下，CAP 定理等基本理论概念成为宝贵的指导原则。</p>
+<p>CAP 定理，有时也称为其提出者埃里克·布鲁尔（Eric Brewer）的“布鲁尔定理”，为理解分布式数据存储中固有的权衡提供了一个关键框架。它指出，在网络分区期间，分布式系统无法同时保证一致性（Consistency）、可用性（Availability）和分区容错性（Partition Tolerance）。相反，它必须选择优先考虑这三个属性中的两个。</p>
+<p>理解 CAP 不仅仅是一项学术练习；它是架构师和开发人员设计可扩展、容错应用程序的实际必需品。它迫使系统在面对不可避免的网络故障现实时，就其系统优先事项做出明智的决策。CAP 定理并非简单地提供一个“三选二”的菜单，而更像是一个约束框架。在分布式系统中，网络分区是不可避免的现实。这意味着系统必须被设计为能够容忍这些分区。因此，在发生网络分区时，实际的决策归结为在一致性（C）和可用性（A）之间进行权衡。这种理解对于架构师至关重要，因为它将重点从抽象的理论选择转移到在网络故障（这些故障是必然发生的）期间如何表现的实际设计决策，从而促使采取更现实的容错方法。</p>
+<h2>II. 分布式系统的支柱：一致性、可用性与分区容错性</h2>
+<p>要真正掌握 CAP 定理，必须首先理解其三个核心组成部分：</p>
+<h3>A. 一致性（C）</h3>
+<p>在 CAP 定理的语境中，一致性指的是“强一致性”，特别是“线性一致性”（Linearizability）。这意味着所有客户端，无论连接到哪个节点，在同一时间都能看到相同的数据。任何在写操作完成后开始的读操作，都必须返回该更新后的值，或之后某个写操作的结果。它旨在确保系统中所有节点都同步了最新信息。</p>
+<p>重要的是，CAP 的“一致性”与 ACID（原子性、一致性、隔离性、持久性）属性中传统数据库的“一致性”有所区别。ACID 一致性是指通过完整性约束确保任何新事务都不会破坏数据库，并且数据库在事务之前和之后都保持一致。CAP 一致性是对分布式系统数据可见性及时性和统一性更严格的保证。</p>
+<p>实现强一致性通常以增加延迟和降低可用性为代价，尤其是在面对网络分区或故障时，因为操作可能需要等待所有节点同步。</p>
+<h3>B. 可用性（A）</h3>
+<p>可用性意味着系统中的非故障节点接收到的每个请求都必须得到响应。即使某些节点停机或出现问题，系统也能继续运行并响应请求。这不一定意味着响应会包含最新数据，但它保证会返回一个响应，防止客户端因无响应而超时或收到错误。</p>
+<p>为实现高可用性，系统通常采用数据复制和负载均衡等策略，确保集群中有足够的独立服务器来处理请求。优先考虑高可用性可能意味着放宽严格的一致性要求，导致不同节点可能暂时持有不同版本的数据。</p>
+<h3>C. 分区容错性（P）</h3>
+<p>分区容错性是指分布式系统在网络故障（即网络分区）发生时仍能继续运行的能力。当故障导致分布式系统的部分彼此隔离，阻止节点间通信时，就会发生“网络分区”。这可能是由于连接中断、网络缓慢或服务器或数据中心之间的链接不可用。一个分区容错的系统确保，尽管存在这些通信中断，系统作为一个整体仍能正常运行。</p>
+<p>在任何真实的分布式系统中，网络分区是不可避免的。天气条件、自然灾害、简单的机器故障，甚至日常网络维护等因素都可能导致通信中断。因此，分区容错性不是一个可选功能，而是任何真正的分布式系统的基本要求。由于分区是不可避免的，CAP 定理有效地指出，在网络分区期间，分布式系统必须选择保持一致性（C）或可用性（A）。它无法同时保证两者。</p>
+<p><strong>表1：CAP 定理组成部分</strong></p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>属性</th>
+<th>定义（在CAP语境中）</th>
+<th>在分布式系统中的含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>一致性 (C)</strong></td>
+<td>所有客户端在同一时间看到相同的数据，读操作返回最新写入的值或错误。</td>
+<td>确保数据在所有节点间同步且是最新的，通常以延迟为代价。</td>
+</tr>
+<tr>
+<td><strong>可用性 (A)</strong></td>
+<td>系统中的非故障节点收到的每个请求都必须得到响应，即使响应数据可能不是最新的。</td>
+<td>即使部分节点故障，系统也能保持运行并响应请求，优先保证服务不中断。</td>
+</tr>
+<tr>
+<td><strong>分区容错性 (P)</strong></td>
+<td>系统在网络故障（分区）发生时仍能继续运行。</td>
+<td>承认网络故障的必然性，并设计系统以在通信中断时保持功能。</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<h2>III. CAP 实践中的权衡：CP 与 AP 系统</h2>
+<p>CAP 定理的核心在于，当网络分区发生时（这是不可避免的），系统必须在一致性（C）和可用性（A）之间做出选择。这导致了两种主要的系统设计范式：CP 系统和 AP 系统。</p>
+<h3>A. 一致性-分区容错性（CP）系统</h3>
+<p>CP 系统优先保证一致性和分区容错性。这意味着在发生网络分区时，系统会牺牲可用性。当节点之间无法通信以同步数据时，CP 系统将停止接受新的写入或返回错误，直到分区得到解决，从而确保所有客户端都能看到一致的数据状态。</p>
+<p>这种设计适用于数据准确性至关重要的场景。例如，在金融交易系统中，银行账户余额必须始终精确无误。如果系统在分区期间允许不一致的交易，可能会导致用户看到错误的余额或发生双重支付。库存管理也是一个典型案例，需要确保所有用户看到准确的商品库存量，以避免超卖。MongoDB 和 HBase 是 CP 系统的典型代表，它们在系统部分故障时，优先确保数据一致性，但可能导致部分请求失败或延迟。</p>
+<h3>B. 可用性-分区容错性（AP）系统</h3>
+<p>AP 系统优先保证可用性和分区容错性。这意味着在发生网络分区时，系统会牺牲即时的一致性，转而采用“最终一致性”（Eventual Consistency）。系统会继续响应请求，即使这意味着某些节点可能返回旧数据。系统会在网络恢复后，最终将所有数据同步到一致状态。</p>
+<p>这种设计适用于对响应速度和持续运行有高要求的场景，即使偶尔出现短暂的数据不一致也能接受。例如，在社交媒体平台中，用户发布状态更新时，即使在网络分区期间，也应能立即发布并被大多数用户看到。虽然不同区域的用户可能暂时看到略有不同的时间线，但只要最终数据同步即可。电子商务网站的购物车服务也是如此，用户添加商品到购物车时，可能不会立即反映到所有区域，但最终所有地方都会显示更新后的购物车。Apache Cassandra 和 Amazon DynamoDB 是 AP 系统的典型代表，它们在网络故障期间保持在线，但可能显示略微过时的数据。</p>
+<h3>C. 一致性-可用性（CA）系统的迷思</h3>
+<p>在 CAP 定理的讨论中，有时会提到 CA 系统，即同时保证一致性和可用性，但不具备分区容错性的系统。传统的关系型数据库，如 MySQL，有时被错误地归类为 CA 系统。然而，这种分类在真正的分布式环境中存在根本性问题。在任何实际的分布式系统中，网络分区是不可避免的。这意味着一个声称是 CA 的系统，实际上在发生分区时将无法正常运行，因为它无法在保持一致性的同时提供可用性。对于现代的分布式应用而言，这种在网络中断时完全停机的行为通常是不可接受的。因此，CA 系统在实践中几乎不存在，因为它们无法应对分布式系统固有的网络故障。</p>
+<h2>IV. 超越二元选择：一致性模型的谱系</h2>
+<p>CAP 定理中的“一致性”特指线性一致性，这是一种非常严格的保证。然而，在实际的分布式系统设计中，一致性并非一个简单的二元选择，而是一个连续的谱系。系统可以根据其具体需求，选择不同程度的“最终一致性”，从而在一致性、可用性、和性能之间找到更细致的平衡点。</p>
+<h3>A. 强一致性（线性一致性）</h3>
+<p>强一致性，或称线性一致性，保证了所有读操作都能立即反映最新的写操作。这意味着系统表现得如同只有一个数据副本，所有操作都瞬时发生，并以某种线性顺序执行。</p>
+<p>这种一致性模型的优点在于数据准确性高，事件顺序可预测，对于需要绝对精确度的系统至关重要，例如银行账户余额或分布式系统的配置和元数据管理。然而，其缺点是同步开销高，可能导致高延迟和可扩展性问题，因为它需要确保所有节点在响应前都已同步。</p>
+<h3>B. 最终一致性</h3>
+<p>最终一致性允许节点之间存在暂时的不一致，但保证所有节点最终会收敛到相同的状态。更新操作是异步地在副本之间传播的，因此在短时间内，不同节点可能持有不同版本的数据。</p>
+<p>这种模型的优势在于高可用性和低延迟，即使在分区期间也能保持响应。它具有良好的可扩展性，适用于高需求、读密集型系统。然而，其缺点是可能导致旧数据或冲突读，并且应用程序逻辑必须能够处理潜在的数据冲突。社交媒体、DNS（域名系统）和电子商务购物车等场景，都广泛采用了最终一致性，因为短暂的数据延迟对用户体验影响不大。</p>
+<h3>C. 其他一致性模型</h3>
+<p>除了强一致性和最终一致性之外，还有一些中间的一致性模型，提供了更细粒度的权衡：</p>
+<ul>
+<li><strong>顺序一致性（Sequential Consistency）：</strong> 确保所有操作以逻辑顺序发生，但并不强制实时排序。这降低了同步开销，适用于操作序列比即时可见性更重要的场景。</li>
+<li><strong>因果一致性（Causal Consistency）：</strong> 确保具有因果关系的操作在所有节点上都以正确的顺序可见。例如，评论必须出现在帖子之后。它在一致性和性能之间取得了平衡，但需要跟踪依赖关系。</li>
+<li><strong>读己所写一致性（Read-Your-Own-Writes Consistency）：</strong> 保证用户总能立即看到自己的更新，即使其他用户可能暂时看到旧版本。这在社交媒体平台中很常见，用户期望立即看到自己的个人资料更新。</li>
+</ul>
+<p>这些一致性模型的重要性在于，它们为系统设计者提供了更灵活的选择。通过理解这些模型的特性及其权衡，开发人员可以根据应用程序对数据新鲜度和响应速度的具体要求，选择最合适的一致性级别，从而构建出既能满足业务需求又具高性能和高可用性的分布式系统。</p>
+<h2>V. 架构影响与实际考量</h2>
+<p>理解 CAP 定理不仅仅是选择数据库类型，它更是一种贯穿整个分布式系统设计的哲学。它影响着系统如何应对故障、如何进行数据持久化，以及如何进行组件间的通信。</p>
+<h3>A. 为分区容错性而设计</h3>
+<p>由于网络分区是分布式系统不可避免的现实，设计系统时必须积极地考虑分区容错性。这包括以下策略：</p>
+<ul>
+<li><strong>冗余和复制：</strong> 部署关键系统组件的多个实例，并跨多个节点复制数据，以避免单点故障，确保数据可用性和完整性。</li>
+<li><strong>负载均衡和自动故障转移：</strong> 使用负载均衡器分配流量，并实施自动故障转移机制，在组件失效时将流量和工作负载自动重定向到备用组件，从而最大限度地减少停机时间。</li>
+<li><strong>监控和警报：</strong> 持续跟踪系统健康状况和性能，并对任何异常情况立即发出警报，这对于实时检测故障至关重要。集中式日志、分布式追踪和性能指标收集都是维护高可用性的关键。</li>
+</ul>
+<h3>B. 对系统设计选择的影响</h3>
+<p>CAP 定理对系统架构的方方面面都有深远影响：</p>
+<ul>
+<li><strong>数据库选择：</strong> CAP 定理直接指导了数据库的选择。传统的 SQL 数据库通常倾向于 CP 模型，而许多 NoSQL 数据库则倾向于 AP 模型。选择哪种数据库取决于应用程序对一致性或可用性的优先需求。</li>
+<li><strong>异步通信模式：</strong> 消息队列在处理 CAP 权衡方面发挥着关键作用。引入消息队列通常会将系统推向优先考虑可用性而非即时一致性。例如，当用户发起一个写请求时，写服务可以将请求写入消息队列并立即返回成功响应给用户，而队列和任务执行器则异步处理实际的数据存储更新。在此期间，读服务可能会访问到过时的数据，导致暂时的一致性降低。然而，这种方法通过确保系统在高负载下仍能保持响应性，从而提高了可用性。这种解耦组件、有效处理不同负载并提高响应能力的方式，是实现高可用性的具体架构模式。但需要注意的是，对于需要严格强一致性的实时功能，消息队列的异步特性可能会损害用户体验。</li>
+</ul>
+<p>CAP 定理不仅仅适用于数据库，它更是一种指导整体系统架构的思维方式。一个复杂的微服务架构可能包含对 CAP 属性有不同优先级的服务。例如，一个处理金融交易的服务可能被设计为 CP 系统，以确保数据准确性，而一个日志记录服务则可能被设计为 AP 系统，以确保日志的持续收集和可用性，即使偶尔出现延迟。这种对 CAP 的整体视图，而不仅仅局限于数据库层，对于构建健壮且可扩展的分布式系统至关重要。</p>
+<h2>VI. 结论：在分布式系统中做出明智决策</h2>
+<p>CAP 定理是分布式系统设计中的一个基石，它明确了在面对网络分区这一不可避免的现实时，系统在一致性和可用性之间必须做出的根本性权衡。它迫使架构师和开发人员深思熟虑，根据应用程序的核心需求来决定在故障发生时，是优先保证数据的绝对准确性，还是优先保证服务的持续响应。</p>
+<p>理解 CAP 定理并非意味着要选择一个完美的解决方案，而是要认识到没有系统能够同时满足所有三个属性。相反，它提供了一个强大的框架，用于分析和设计能够优雅地处理故障并满足特定业务需求的系统。在实践中，这意味着要根据应用场景（例如，金融系统需要强一致性，而社交媒体平台可能更看重可用性）来校准 CAP 的平衡点。此外，通过采用如消息队列等异步通信模式，系统可以在特定场景下优化可用性，即使这可能意味着短暂的一致性滞后。</p>
+<p>随着分布式系统变得越来越复杂，对一致性模型谱系的深入理解变得尤为重要。强一致性、最终一致性以及介于两者之间的各种模型，为设计者提供了丰富的工具集，以在性能、可用性和数据新鲜度之间找到最佳平衡。</p>
+<p>总之，CAP 定理仍然是构建弹性、可扩展和用户中心型分布式系统的核心指导原则。它促使工程师们做出有意识的设计选择，从而更好地应对现代计算环境的挑战。</p></div>
+<div style="font-size:small;margin-top:8px;float:right;"></div>
+
+<button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
+<div class="comments" id="comments"></div>
+
+</div>
+    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io">reborn's technical blog</a></div>
+<div id="footer2">
+    <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
+</div>
+
+<script>
+var now=new Date();
+document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+
+if(""!=""){
+    var startSite=new Date("");
+    var diff=now.getTime()-startSite.getTime();
+    var diffDay=Math.floor(diff/(1000*60*60*24));
+    document.getElementById("runday").innerHTML="网站运行"+diffDay+"天"+" • ";
+}
+</script></div>
+</body>
+<script>
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z'};
+var utterancesLoad=0;
+
+let themeSettings={
+    "dark": ["dark","moon","#00f0ff","dark-blue"],
+    "light": ["light","sun","#ff5000","github-light"],
+    "auto": ["auto","sync","","preferred-color-scheme"]
+};
+function changeTheme(mode, icon, color, utheme){
+    document.documentElement.setAttribute("data-color-mode",mode);
+    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
+    document.getElementById("themeSwitch").parentNode.style.color=color;
+    if(utterancesLoad==1){utterancesTheme(utheme);}
+}
+function modeSwitch(){
+    let currentMode=document.documentElement.getAttribute('data-color-mode');
+    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
+    localStorage.setItem("meek_theme", newMode);
+    if(themeSettings[newMode]){
+        changeTheme(...themeSettings[newMode]);
+    }
+}
+function utterancesTheme(theme){
+    const message={type:'set-theme',theme: theme};
+    const iframe=document.getElementsByClassName('utterances-frame')[0];
+    iframe.contentWindow.postMessage(message,'https://utteranc.es');
+}
+if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
+console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
+</script>
+
+<script>
+document.getElementById("pathHome").setAttribute("d",IconList["home"]);
+document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
+
+
+
+function openComments(){
+    cm=document.getElementById("comments");
+    cmButton=document.getElementById("cmButton");
+    cmButton.innerHTML="loading";
+    span=document.createElement("span");
+    span.setAttribute("class","AnimatedEllipsis");
+    cmButton.appendChild(span);
+
+    script=document.createElement("script");
+    script.setAttribute("src","https://utteranc.es/client.js");
+    script.setAttribute("repo","hanlinyuanexplosivescholar/tech-reborn.github.io");
+    script.setAttribute("issue-term","title");
+    
+    if(localStorage.getItem("meek_theme")=="dark"){script.setAttribute("theme","dark-blue");}
+    else if(localStorage.getItem("meek_theme")=="light") {script.setAttribute("theme","github-light");}
+    else{script.setAttribute("theme","preferred-color-scheme");}
+    
+    script.setAttribute("crossorigin","anonymous");
+    script.setAttribute("async","");
+    cm.appendChild(script);
+
+    int=self.setInterval("iFrameLoading()",200);
+}
+
+function iFrameLoading(){
+    var utterances=document.getElementsByClassName('utterances');
+    if(utterances.length==1){
+        if(utterances[0].style.height!=""){
+            utterancesLoad=1;
+            int=window.clearInterval(int);
+            document.getElementById("cmButton").style.display="none";
+            console.log("utterances Load OK");
+        }
+    }
+}
+
+
+
+</script>
+
+
+</html>
