@@ -10,13 +10,161 @@
         let theme = localStorage.getItem("meek_theme") || "light";
         document.documentElement.setAttribute("data-color-mode", theme);
     </script>
-<meta name="description" content="<html>
-<body>
-<!--StartFragment--><p><span>Docker作为一个开源的容器化平台，彻底改变了应用程序的开发、交付和运行方式。">
+<meta name="description" content="<!DOCTYPE html>
+<html lang='zh-CN'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>交互式限流算法指南</title>
+    <script src='https://cdn.tailwindcss.com'></script>
+    <script src='https://cdn.jsdelivr.net/npm/chart.js'></script>
+    <link rel='preconnect' href='https://fonts.googleapis.com'>
+    <link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>
+    <link href='https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap' rel='stylesheet'>
+    <!-- Chosen Palette: Calm Harmony -->
+    <!-- Application Structure Plan: The application is structured into thematic sections to guide the user from basic concepts to deep-dive comparisons and practical implementation. It starts with a 'What & Why' intro, moves to an 'Algorithm Explorer' with interactive visualizations (the core of the app), then to a 'Comparative Analysis' section with a radar chart for easy comparison, and finally an 'Implementation Guide'. This task-oriented flow (Understand -> Explore -> Compare -> Implement) was chosen over a linear report structure to enhance learning and usability, allowing users to jump to the section most relevant to them. -->
+    <!-- Visualization & Content Choices: Report info is mapped to interactive elements. 1) Algorithm Principles -> Goal: Explore -> Viz: Custom Canvas Animations -> Interaction: Watch simulated request flows -> Justification: Visually demonstrating the core logic is more intuitive than text alone. 2) Algorithm Comparison -> Goal: Compare -> Viz: Radar Chart (Chart.js) -> Interaction: Hover to see details -> Justification: A radar chart provides an excellent multi-axial view to compare algorithms across key metrics like complexity and burst handling. 3) Implementation Libraries -> Goal: Inform -> Viz: Tabbed content cards -> Interaction: Click tabs for different languages -> Justification: Organizes a large amount of information cleanly. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f8fafc; /* neutral-50 */
+            color: #1f2937; /* neutral-800 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .tab.active {
+            border-color: #3b82f6; /* blue-500 */
+            background-color: #eff6ff; /* blue-50 */
+            color: #2563eb; /* blue-600 */
+            font-weight: 500;
+        }
+        .section-title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 1rem;
+            color: #111827; /* gray-900 */
+        }
+        .section-subtitle {
+            font-size: 1.125rem;
+            text-align: center;
+            max-width: 48rem;
+            margin: 0 auto 3rem auto;
+            color: #4b5563; /* gray-600 */
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        .icon-placeholder {
+            font-size: 2rem;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body class='antialiased'>
+
+    <header class='bg-white py-8'>
+        <div class='container mx-auto px-4 text-center'>
+            <h1 class='text-4xl md:text-5xl font-bold text-gray-900 mb-2'>交互式限流算法指南</h1>
+            <p class='text-lg text-gray-600 max-w-3xl mx-auto'>一个将复杂的系统保护机制转化为直观、可交互体验的探索平台。">
 <meta property="og:title" content="Docker实现原理深度解析">
-<meta property="og:description" content="<html>
-<body>
-<!--StartFragment--><p><span>Docker作为一个开源的容器化平台，彻底改变了应用程序的开发、交付和运行方式。">
+<meta property="og:description" content="<!DOCTYPE html>
+<html lang='zh-CN'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>交互式限流算法指南</title>
+    <script src='https://cdn.tailwindcss.com'></script>
+    <script src='https://cdn.jsdelivr.net/npm/chart.js'></script>
+    <link rel='preconnect' href='https://fonts.googleapis.com'>
+    <link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>
+    <link href='https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap' rel='stylesheet'>
+    <!-- Chosen Palette: Calm Harmony -->
+    <!-- Application Structure Plan: The application is structured into thematic sections to guide the user from basic concepts to deep-dive comparisons and practical implementation. It starts with a 'What & Why' intro, moves to an 'Algorithm Explorer' with interactive visualizations (the core of the app), then to a 'Comparative Analysis' section with a radar chart for easy comparison, and finally an 'Implementation Guide'. This task-oriented flow (Understand -> Explore -> Compare -> Implement) was chosen over a linear report structure to enhance learning and usability, allowing users to jump to the section most relevant to them. -->
+    <!-- Visualization & Content Choices: Report info is mapped to interactive elements. 1) Algorithm Principles -> Goal: Explore -> Viz: Custom Canvas Animations -> Interaction: Watch simulated request flows -> Justification: Visually demonstrating the core logic is more intuitive than text alone. 2) Algorithm Comparison -> Goal: Compare -> Viz: Radar Chart (Chart.js) -> Interaction: Hover to see details -> Justification: A radar chart provides an excellent multi-axial view to compare algorithms across key metrics like complexity and burst handling. 3) Implementation Libraries -> Goal: Inform -> Viz: Tabbed content cards -> Interaction: Click tabs for different languages -> Justification: Organizes a large amount of information cleanly. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f8fafc; /* neutral-50 */
+            color: #1f2937; /* neutral-800 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .tab.active {
+            border-color: #3b82f6; /* blue-500 */
+            background-color: #eff6ff; /* blue-50 */
+            color: #2563eb; /* blue-600 */
+            font-weight: 500;
+        }
+        .section-title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 1rem;
+            color: #111827; /* gray-900 */
+        }
+        .section-subtitle {
+            font-size: 1.125rem;
+            text-align: center;
+            max-width: 48rem;
+            margin: 0 auto 3rem auto;
+            color: #4b5563; /* gray-600 */
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        .icon-placeholder {
+            font-size: 2rem;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body class='antialiased'>
+
+    <header class='bg-white py-8'>
+        <div class='container mx-auto px-4 text-center'>
+            <h1 class='text-4xl md:text-5xl font-bold text-gray-900 mb-2'>交互式限流算法指南</h1>
+            <p class='text-lg text-gray-600 max-w-3xl mx-auto'>一个将复杂的系统保护机制转化为直观、可交互体验的探索平台。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/Docker-shi-xian-yuan-li-shen-du-jie-xi.html">
 <meta property="og:image" content="https://github.githubassets.com/favicons/favicon.svg">
@@ -45,7 +193,17 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
     body {padding: 8px;}
     .postTitle{font-size:24px;}
 }
-
+.copy-feedback {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 50px;
+    color: var(--color-fg-on-emphasis);
+    background-color: var(--color-fg-muted);
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 12px;
+}
 </style>
 
 
@@ -79,18 +237,734 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
     <div id="content">
 <div class="markdown-body" id="postBody">
 
-<p><span>Docker作为一个开源的容器化平台，彻底改变了应用程序的开发、交付和运行方式。它将代码及其所有依赖项打包成标准化的单元，即容器，确保应用程序在不同计算环境中快速、可靠地运行，有效解决了“在我的机器上可以运行”的问题 </span><span><span><sup></sup></span></span><span>。自2013年推出以来，其轻量级和可移植的特性推动了应用程序开发和部署领域的革命 </span><span><span><sup></sup></span></span><span>。</span><span>   </span></p><div><div><div><div></div><div></div><div></div><div></div><div></div></div></div></div><p></p><p>尽管Docker极大地简化了部署流程，但要真正掌握它并有效解决复杂问题，深入理解其所依赖的Linux内核基础原理及其内部架构至关重要。本文旨在揭示这些核心概念，帮助读者更好地驾驭容器化技术。</p><p></p><h2>Docker与虚拟机的根本区别</h2><p></p><p>在深入探讨Docker的实现细节之前，首先需要明确其与传统虚拟机的根本性差异。这两种技术都旨在提供隔离的运行环境，但其实现方式和所带来的权衡却大相径庭。</p><p></p><h3>高层架构比较</h3><p></p><p><span><b>虚拟机（VMs）</b> 抽象化的是<b>硬件层</b> </span><span><span><sup></sup></span></span><span>。它们在管理程序（hypervisor）之上运行一个完整的客户操作系统（如Linux或Windows），该客户操作系统再与宿主操作系统和硬件交互 </span><span><span><sup></sup></span></span><span>。每个虚拟机都包含自己的内核、二进制文件和库，因此通常大小可达数十GB </span><span><span><sup></sup></span></span><span>。它们是“沙盒”环境，拥有虚拟化的硬件 </span><span><span><sup></sup></span></span><span>。</span><span>   </span></p><div><div><div><div></div><div></div><div></div><div></div><div></div></div></div></div><p></p><p><span><b>Docker容器</b> 则抽象化的是<b>操作系统层</b> </span><span><span><sup></sup></span></span><span>。它们共享宿主操作系统的内核 </span><span><span><sup></sup></span></span><span>。每个容器只包含应用程序、其运行时、系统工具、库和设置，这使得它们非常轻量（通常只有数十MB）并能快速启动（几秒甚至几毫秒） </span><span><span><sup></sup></span></span><span>。多个容器作为隔离的进程运行在同一台机器的用户空间中，共享同一个操作系统内核 </span><span><span><sup></sup></span></span><span>。</span><span>   </span></p><div><div><div><div></div><div></div><div></div><div></div><div></div></div></div></div><p></p><p></p><h3>Docker方法的关键优势</h3><p></p><p>Docker的这种架构带来了多方面的显著优势：</p><ul><li><p><span><b>资源效率：</b> 容器无需复制整个操作系统，只需包含运行应用程序所需的库和二进制文件，从而大大减少了资源需求 </span><span><span><sup></sup></span></span><span>。这使得单个宿主机上可以运行更高密度的应用程序 </span><span><span><sup></sup></span></span><span>。</span><span>   </span></p><div><div><div><div></div><div></div><div></div><div></div><div></div></div></div></div><p></p></li><li><p><span><b>速度：</b> 由于无需启动完整的操作系统，容器的启动速度快得多，通常在几秒或几毫秒内即可完成 </span><span><span><sup></sup></span></span><span>。</span><span>   </span></p><div><div><div><div></div><div></div><div></div><div></div><div></div></div></div></div><p></p></li><li><p><span><b>可移植性与一致性：</b> Docker容器封装了应用程序及其所有依赖项，确保了在不同环境（开发、测试、生产）中的一致性能 </span><span><span><sup></sup></span></span><span>。Docker镜像无论底层基础设施如何，都能以相同的方式运行 </span><span><span><sup></sup></span></span><span>。</span><span>   </span></p><div><div><div><div></div><div></div><div></div><div></div><div></div></div></div></div><p></p></li><li><p><span><b>可伸缩性：</b> 容器的轻量级特性使得通过快速启动多个容器来水平扩展应用程序变得更加容易 </span><span><span><sup></sup></span></span><span>。</span><span>   </span></p><div><div><div><div></div></div></div></div><p></p></li><li><p><span><b>声明式配置：</b> Dockerfile和Docker Compose文件允许对应用程序环境进行声明式配置，简化了环境的复现和管理 </span><span><span><sup></sup></span></span><span>。</span><span>   </span></p><div><div><div><div></div></div></div></div><p></p></li></ul><p></p><h3>安全性考量</h3><p></p><p><span>在安全性方面，虚拟机提供了“完全隔离的安全性”，因为它们是独立的系统，不受同一宿主机上其他虚拟机漏洞的影响 </span><span><span><sup></sup></span></span><span>。相比之下，Docker容器由于共享宿主内核，其安全态势有所不同。不建议为容器中的应用程序提供root访问权限，因为单个受感染的应用程序由于能够访问内核，理论上可能危及整个宿主系统 </span><span><span><sup></sup></span></span><span>。</span><span>   </span></p><div><div><div><div></div><div></div></div></div></div><p></p><p></p><h3>抽象层面的权衡</h3><p></p><p><span>虚拟机和容器在抽象层面上的根本差异，直接导致了它们在隔离深度和资源效率之间存在一种固有的权衡。虚拟机通过虚拟化硬件，为每个实例提供了完整的客户操作系统，从而实现了深度的隔离。这种隔离意味着，即使一个虚拟机内部出现问题，也很难影响到宿主机或其他虚拟机，除非管理程序本身被攻破 </span><span><span><sup></sup></span></span><span>。</span><span>   </span></p><div><div><div><div></div></div></div></div><p></p><p><span>然而，这种深度隔离的代价是更高的资源消耗和更长的启动时间。每个虚拟机都需要分配独立的CPU、内存和存储资源来运行其完整的操作系统副本 </span><span><span><sup></sup></span></span><span>。</span><span>   </span></p><div><div><div><div></div></div></div></div><p></p><p><span>与此相对，Docker容器通过虚拟化操作系统层，共享宿主机的内核 </span><span><span><sup></sup></span></span><span>。这种共享机制使得容器能够极其轻量、启动迅速且资源效率高 </span><span><span><sup></sup></span></span><span>。容器只包含应用程序及其必要的依赖，而无需重复整个操作系统 </span><span><span><sup></sup></span></span><span>。这种设计极大地提升了部署和扩展的灵活性。</span><span>   </span></p><div><div><div><div></div><div></div><div></div><div></div><div></div></div></div></div><p></p><p><span>但这种效率的提升伴随着对隔离深度的不同考量。由于容器共享宿主机的内核，如果内核本身存在漏洞，那么理论上所有共享该内核的容器都可能受到影响 </span><span><span><sup></sup></span></span><span>。因此，容器的安全性更多地依赖于宿主内核的健壮性和容器内部的安全实践。</span><span>   </span></p><div><div><div><div></div></div></div></div><p></p><p><span>最终，在虚拟机和容器之间做出选择，往往取决于对这种核心权衡的考量：是优先选择硬件级别的深度隔离和由此带来的更高安全性（虚拟机），还是优先选择资源效率、启动速度和部署灵活性（容器）。在许多现代云原生应用场景中，后者带来的优势使其成为更受欢迎的选择，但也同时要求更严格的宿主内核安全管理和容器内部权限控制 </span><span><span><sup></sup></span></span><span>。</span><span>   </span></p><div><div><div><div></div></div></div></div><p></p><div>
-特性 | Docker 容器 | 虚拟机 (VMs)
--- | -- | --
-抽象层 | 操作系统 (OS) | 硬件
-OS 需求 | 共享宿主 OS 内核 | 每个 VM 都有完整客户 OS
-资源使用 | 轻量 (MBs), 高密度 | 重量 (GBs), 密度较低
-启动时间 | 秒/毫秒 | 分钟
-隔离级别 | OS 级别 (命名空间, 控制组) | 硬件级别 (管理程序)
-可移植性 | 在支持 Docker 的系统上高度可移植 | 可移植性较低，存在兼容性问题
-安全性 | 共享内核，潜在宿主系统受损风险 | 隔离性更强，宿主系统受损风险较低
-用例 | 微服务, CI/CD, 单 OS 应用 | 不同 OS 需求, 高安全性应用
-</div><p></p><h2>结论：容器化的交响乐章</h2><p></p><p>Docker的革命性影响源于其对Linux内核核心特性（命名空间用于隔离，cgroups用于资源管理）、高效的分层文件系统与写时复制机制，以及模块化引擎架构的智能编排。这些元素协同工作，提供了轻量级、可移植且可伸缩的应用程序运行环境。</p><p>多样化的网络模型和数据持久化选项进一步增强了开发人员构建健壮且有状态的容器化应用程序的能力，无论是用于单宿主开发还是多宿主分布式系统。</p><p>理解这些底层原理，将Docker从一个“神奇的黑盒子”转变为一个强大且易于理解的工具。这种知识使开发人员和运维团队能够优化性能、有效排查问题，并设计出更安全、更具弹性的云原生应用程序。持续探索、实验，并自信地利用容器化的全部潜力，将为现代软件开发带来无限可能。</p>
+
+    
+    
+    &lt;title&gt;交互式限流算法指南&lt;/title&gt;
+    &lt;script src="https://cdn.tailwindcss.com"&gt;&lt;/script&gt;
+    &lt;script src="https://cdn.jsdelivr.net/npm/chart.js"&gt;&lt;/script&gt;
+    
+    
+    
+    
+    
+    
+    
+    &lt;style&gt;
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f8fafc; /* neutral-50 */
+            color: #1f2937; /* neutral-800 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        <a class="user-mention notranslate" data-hovercard-type="organization" data-hovercard-url="/orgs/media/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/media">@media</a> (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .tab.active {
+            border-color: #3b82f6; /* blue-500 */
+            background-color: #eff6ff; /* blue-50 */
+            color: #2563eb; /* blue-600 */
+            font-weight: 500;
+        }
+        .section-title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 1rem;
+            color: #111827; /* gray-900 */
+        }
+        .section-subtitle {
+            font-size: 1.125rem;
+            text-align: center;
+            max-width: 48rem;
+            margin: 0 auto 3rem auto;
+            color: #4b5563; /* gray-600 */
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        .icon-placeholder {
+            font-size: 2rem;
+            line-height: 1;
+        }
+    &lt;/style&gt;
+
+
+<pre class="notranslate"><code class="notranslate">&lt;header class="bg-white py-8"&gt;
+    &lt;div class="container mx-auto px-4 text-center"&gt;
+        &lt;h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-2"&gt;交互式限流算法指南&lt;/h1&gt;
+        &lt;p class="text-lg text-gray-600 max-w-3xl mx-auto"&gt;一个将复杂的系统保护机制转化为直观、可交互体验的探索平台。&lt;/p&gt;
+    &lt;/div&gt;
+&lt;/header&gt;
+
+&lt;main class="container mx-auto px-4 py-12"&gt;
+    
+    &lt;section id="intro" class="mb-20"&gt;
+        &lt;h2 class="section-title"&gt;什么是限流？为何如此重要？&lt;/h2&gt;
+        &lt;p class="section-subtitle"&gt;
+            限流 (Rate Limiting) 是现代系统设计的基石，它通过控制请求速率来保护服务免于过载、确保资源公平分配并抵御恶意攻击。这不仅是防御策略，更是主动的资源管理，直接关系到服务的稳定性和用户体验。
+        &lt;/p&gt;
+        &lt;div class="grid md:grid-cols-3 gap-8 text-center"&gt;
+            &lt;div class="card p-6"&gt;
+                &lt;div class="icon-placeholder mb-4 text-blue-500"&gt;🛡️&lt;/div&gt;
+                &lt;h3 class="text-xl font-semibold mb-2"&gt;防止系统过载&lt;/h3&gt;
+                &lt;p class="text-gray-600"&gt;避免因流量洪峰导致的服务响应缓慢或崩溃，保障系统核心稳定性。&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div class="card p-6"&gt;
+                &lt;div class="icon-placeholder mb-4 text-green-500"&gt;⚖️&lt;/div&gt;
+                &lt;h3 class="text-xl font-semibold mb-2"&gt;确保公平使用&lt;/h3&gt;
+                &lt;p class="text-gray-600"&gt;防止少数用户滥用资源，确保所有合法用户都能公平地访问服务。&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div class="card p-6"&gt;
+                &lt;div class="icon-placeholder mb-4 text-red-500"&gt;💥&lt;/div&gt;
+                &lt;h3 class="text-xl font-semibold mb-2"&gt;抵御恶意攻击&lt;/h3&gt;
+                &lt;p class="text-gray-600"&gt;有效防御DDoS、暴力破解和恶意爬虫等攻击，增强系统安全性。&lt;/p&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/section&gt;
+
+    &lt;section id="explorer" class="mb-20"&gt;
+        &lt;h2 class="section-title"&gt;算法浏览器&lt;/h2&gt;
+        &lt;p class="section-subtitle"&gt;
+            选择一个算法，通过交互式动画和简洁的说明来深入理解其工作原理。观察请求如何被处理、允许或拒绝，直观感受每种策略的独特之处。
+        &lt;/p&gt;
+
+        &lt;div class="flex justify-center mb-8 border-b border-gray-200"&gt;
+            &lt;div id="tabs-container" class="flex flex-wrap -mb-px"&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;div id="algorithm-content" class="grid lg:grid-cols-2 gap-12 items-start"&gt;
+            &lt;div class="card p-6 h-full"&gt;
+                &lt;h3 class="text-2xl font-bold mb-4" id="algorithm-title"&gt;&lt;/h3&gt;
+                &lt;div class="w-full h-64 bg-gray-100 rounded-lg mb-4"&gt;
+                   &lt;canvas id="algorithm-visualizer"&gt;&lt;/canvas&gt;
+                &lt;/div&gt;
+                &lt;div class="text-center text-sm text-gray-500 mb-4"&gt;
+                    &lt;button id="reset-animation-btn" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"&gt;重新开始动画&lt;/button&gt;
+                &lt;/div&gt;
+                 &lt;p class="mb-4 text-gray-700" id="algorithm-description"&gt;&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;div class="space-y-6"&gt;
+                &lt;div class="card p-6"&gt;
+                    &lt;h4 class="text-xl font-semibold mb-3"&gt;✅ 优点&lt;/h4&gt;
+                    &lt;ul id="algorithm-pros" class="list-disc list-inside space-y-2 text-gray-700"&gt;&lt;/ul&gt;
+                &lt;/div&gt;
+                &lt;div class="card p-6"&gt;
+                    &lt;h4 class="text-xl font-semibold mb-3"&gt;❌ 缺点&lt;/h4&gt;
+                    &lt;ul id="algorithm-cons" class="list-disc list-inside space-y-2 text-gray-700"&gt;&lt;/ul&gt;
+                &lt;/div&gt;
+                 &lt;div class="card p-6"&gt;
+                    &lt;h4 class="text-xl font-semibold mb-3"&gt;🎯 典型适用场景&lt;/h4&gt;
+                    &lt;ul id="algorithm-use-cases" class="list-disc list-inside space-y-2 text-gray-700"&gt;&lt;/ul&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/section&gt;
+    
+    &lt;section id="comparison" class="mb-20"&gt;
+        &lt;h2 class="section-title"&gt;对比分析&lt;/h2&gt;
+        &lt;p class="section-subtitle"&gt;
+            没有完美的算法，只有最适合的。通过下面的雷达图直观对比各算法在关键维度上的表现，帮助您根据业务场景的特定需求做出权衡和选择。
+        &lt;/p&gt;
+        &lt;div class="card p-6"&gt;
+            &lt;div class="chart-container"&gt;
+                &lt;canvas id="comparison-chart"&gt;&lt;/canvas&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/section&gt;
+
+    &lt;section id="implementation"&gt;
+        &lt;h2 class="section-title"&gt;实现与工具&lt;/h2&gt;
+         &lt;p class="section-subtitle"&gt;
+            了解限流在系统中的不同实现位置，并探索各大编程语言中成熟的库与框架，快速将理论付诸实践。
+        &lt;/p&gt;
+        &lt;div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8"&gt;
+             &lt;div class="card p-6"&gt;
+                &lt;h3 class="text-xl font-semibold mb-2"&gt;Java&lt;/h3&gt;
+                &lt;ul class="list-disc list-inside space-y-1 text-gray-600"&gt;
+                    &lt;li&gt;Google Guava RateLimiter&lt;/li&gt;
+                    &lt;li&gt;Bucket4j&lt;/li&gt;
+                    &lt;li&gt;Resilience4j&lt;/li&gt;
+                &lt;/ul&gt;
+            &lt;/div&gt;
+             &lt;div class="card p-6"&gt;
+                &lt;h3 class="text-xl font-semibold mb-2"&gt;Python&lt;/h3&gt;
+                 &lt;ul class="list-disc list-inside space-y-1 text-gray-600"&gt;
+                    &lt;li&gt;Flask-Limiter&lt;/li&gt;
+                    &lt;li&gt;requests-ratelimiter&lt;/li&gt;
+                &lt;/ul&gt;
+            &lt;/div&gt;
+             &lt;div class="card p-6"&gt;
+                &lt;h3 class="text-xl font-semibold mb-2"&gt;Go&lt;/h3&gt;
+                &lt;ul class="list-disc list-inside space-y-1 text-gray-600"&gt;
+                    &lt;li&gt;golang.org/x/time/rate&lt;/li&gt;
+                    &lt;li&gt;sethvargo/go-limiter&lt;/li&gt;
+                &lt;/ul&gt;
+            &lt;/div&gt;
+             &lt;div class="card p-6"&gt;
+                &lt;h3 class="text-xl font-semibold mb-2"&gt;Node.js&lt;/h3&gt;
+                &lt;ul class="list-disc list-inside space-y-1 text-gray-600"&gt;
+                    &lt;li&gt;express-rate-limit&lt;/li&gt;
+                    &lt;li&gt;dynamic-rate-limiter&lt;/li&gt;
+                    &lt;li&gt;NestJS Throttler&lt;/li&gt;
+                &lt;/ul&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/section&gt;
+
+&lt;/main&gt;
+
+&lt;footer class="bg-gray-800 text-white mt-20 py-8"&gt;
+    &lt;div class="container mx-auto px-4 text-center text-gray-400"&gt;
+        &lt;p&gt;基于源报告构建的交互式应用。&lt;/p&gt;
+        &lt;p&gt;旨在提供更直观的学习体验。&lt;/p&gt;
+    &lt;/div&gt;
+&lt;/footer&gt;
+
+&lt;script&gt;
+    document.addEventListener('DOMContentLoaded', () =&gt; {
+        const ALGORITHMS = {
+            'fixed-window': {
+                name: '固定窗口计数器',
+                description: '在固定的时间窗口内计算请求数。简单直观，但会在窗口边界产生突发问题。',
+                pros: ['实现简单，易于理解和维护。', '资源消耗低，只需一个计数器。'],
+                cons: ['窗口边缘的突发流量问题，可能导致瞬间请求量翻倍。', '流量控制不够平滑，可能误伤合法用户。'],
+                useCases: ['流量可预测的简单场景。', '对突发流量不敏感的内部API。']
+            },
+            'sliding-log': {
+                name: '滑动窗口日志',
+                description: '在滑动的时间窗口内记录每个请求的时间戳。精确控制速率，但内存消耗较大。',
+                pros: ['精确控制请求速率，有效缓解了窗口边界问题。', '流量控制非常平滑。'],
+                cons: ['需要存储每个请求的时间戳，内存占用高。', '实现相对复杂，有一定计算开销。'],
+                useCases: ['需要精确速率控制的高流量应用。', '对公平性要求高的场景，如金融交易API。']
+            },
+            'sliding-counter': {
+                name: '滑动窗口计数器',
+                description: '滑动窗口日志的优化版，结合了固定窗口和滑动窗口的优点，平衡了性能与资源。',
+                pros: ['内存效率高，比日志法节省大量空间。', '很好地处理了突发流量，性能与资源平衡。'],
+                cons: ['实现比固定窗口复杂。', '存在一定不准确性（假设前一窗口请求均匀分布）。'],
+                useCases: ['需要平衡性能和资源效率的可伸缩API。', '大型分布式系统中的通用限流方案。']
+            },
+            'token-bucket': {
+                name: '令牌桶',
+                description: '以固定速率向桶中放入令牌，请求消耗令牌。能有效应对突发流量。',
+                pros: ['允许并能平滑处理突发流量。', '高效利用网络带宽，灵活性高。'],
+                cons: ['令牌耗尽时新请求会延迟。', '不适合需要完美稳定速率的场景。'],
+                useCases: ['视频流（允许快速缓冲）、文件上传。', '电商秒杀等需要应对瞬时高并发的场景。']
+            },
+            'leaky-bucket': {
+                name: '漏桶',
+                description: '请求进入桶中排队，以恒定速率流出。能强制平滑输出流量，但会丢弃突发请求。',
+                pros: ['确保平滑、恒定的输出流量。', '实现简单，内存效率高。'],
+                cons: ['无法有效处理突发流量，多余请求会被丢弃。', '无法充分利用瞬时可用带宽。'],
+                useCases: ['VoIP、实时流媒体等对流量平滑度要求极高的应用。', 'ISP网络提供商进行流量整形。']
+            },
+        };
+
+        const COMPARISON_DATA = {
+            labels: ['突发处理能力', '流量平滑度', '资源利用效率', '实现复杂度', '精确度'],
+            datasets: [
+                {
+                    label: '固定窗口',
+                    data: [1, 2, 5, 5, 2],
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                },
+                {
+                    label: '滑动窗口日志',
+                    data: [4, 5, 2, 2, 5],
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                },
+                 {
+                    label: '滑动窗口计数器',
+                    data: [4, 4, 4, 3, 4],
+                    borderColor: 'rgba(255, 206, 86, 1)',
+                    backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                },
+                {
+                    label: '令牌桶',
+                    data: [5, 3, 4, 3, 4],
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                },
+                {
+                    label: '漏桶',
+                    data: [1, 5, 4, 4, 3],
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                }
+            ]
+        };
+
+        let currentState = {
+            activeAlgorithm: 'fixed-window',
+            animationFrameId: null,
+        };
+
+        const tabsContainer = document.getElementById('tabs-container');
+        const titleEl = document.getElementById('algorithm-title');
+        const descriptionEl = document.getElementById('algorithm-description');
+        const prosEl = document.getElementById('algorithm-pros');
+        const consEl = document.getElementById('algorithm-cons');
+        const useCasesEl = document.getElementById('algorithm-use-cases');
+        const visualizerCanvas = document.getElementById('algorithm-visualizer');
+        const comparisonCanvas = document.getElementById('comparison-chart');
+        const resetBtn = document.getElementById('reset-animation-btn');
+
+        const ctx = visualizerCanvas.getContext('2d');
+        
+        function renderTabs() {
+            tabsContainer.innerHTML = '';
+            Object.keys(ALGORITHMS).forEach(id =&gt; {
+                const tab = document.createElement('button');
+                tab.dataset.id = id;
+                tab.textContent = ALGORITHMS[id].name;
+                tab.className = `tab text-lg px-4 py-3 border-b-2 font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors duration-200 ease-in-out ${currentState.activeAlgorithm === id ? 'active' : 'border-transparent'}`;
+                tab.addEventListener('click', () =&gt; {
+                    currentState.activeAlgorithm = id;
+                    render();
+                });
+                tabsContainer.appendChild(tab);
+            });
+        }
+
+        function renderContent() {
+            const algorithm = ALGORITHMS[currentState.activeAlgorithm];
+            titleEl.textContent = algorithm.name;
+            descriptionEl.textContent = algorithm.description;
+
+            prosEl.innerHTML = algorithm.pros.map(p =&gt; `&lt;li&gt;${p}&lt;/li&gt;`).join('');
+            consEl.innerHTML = algorithm.cons.map(c =&gt; `&lt;li&gt;${c}&lt;/li&gt;`).join('');
+            useCasesEl.innerHTML = algorithm.useCases.map(u =&gt; `&lt;li&gt;${u}&lt;/li&gt;`).join('');
+
+            startAnimation();
+        }
+
+        function renderComparisonChart() {
+            new Chart(comparisonCanvas, {
+                type: 'radar',
+                data: COMPARISON_DATA,
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                display: true,
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 5,
+                            pointLabels: {
+                                font: {
+                                    size: 14,
+                                    family: "'Noto Sans SC', sans-serif"
+                                }
+                            },
+                            ticks: {
+                               stepSize: 1
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                 font: {
+                                    size: 12,
+                                    family: "'Noto Sans SC', sans-serif"
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function startAnimation() {
+            if (currentState.animationFrameId) {
+                cancelAnimationFrame(currentState.animationFrameId);
+            }
+            const animator = getAnimator(currentState.activeAlgorithm);
+            animator();
+        }
+
+        function getAnimator(algorithmId) {
+            switch(algorithmId) {
+                case 'fixed-window': return animateFixedWindow;
+                case 'sliding-log': return animateSlidingLog;
+                case 'sliding-counter': return animateSlidingCounter;
+                case 'token-bucket': return animateTokenBucket;
+                case 'leaky-bucket': return animateLeakyBucket;
+                default: return animateFixedWindow;
+            }
+        }
+
+        function render() {
+            renderTabs();
+            renderContent();
+        }
+
+        resetBtn.addEventListener('click', startAnimation);
+        
+        // Animation logic starts here
+        let requests = [];
+        const MAX_REQUESTS = 50;
+
+        function drawRequest(req) {
+            ctx.beginPath();
+            ctx.arc(req.x, req.y, 5, 0, Math.PI * 2);
+            ctx.fillStyle = req.color;
+            ctx.fill();
+        }
+
+        function animateFixedWindow() {
+            let frameCount = 0;
+            let reqCountInWindow = 0;
+            const windowDuration = 300; // frames
+            const limit = 5;
+            const w = visualizerCanvas.width;
+            const h = visualizerCanvas.height;
+            requests = [];
+
+            function loop() {
+                frameCount++;
+                if (frameCount &gt; windowDuration * 2) {
+                    frameCount = 0;
+                    reqCountInWindow = 0;
+                    requests = [];
+                }
+                if (frameCount % windowDuration &lt; 5) {
+                     reqCountInWindow = 0;
+                }
+                
+                ctx.clearRect(0, 0, w, h);
+                
+                // Draw window
+                const windowIndex = Math.floor(frameCount / windowDuration);
+                const windowX = windowIndex * (w / 2);
+                ctx.fillStyle = 'rgba(54, 162, 235, 0.1)';
+                ctx.fillRect(windowX, 0, w/2, h);
+                ctx.strokeStyle = 'rgba(54, 162, 235, 0.5)';
+                ctx.strokeRect(windowX, 0, w/2, h);
+                
+                // Generate new request
+                if (Math.random() &lt; 0.1 &amp;&amp; requests.length &lt; MAX_REQUESTS) {
+                    const isAllowed = reqCountInWindow &lt; limit;
+                    if (isAllowed) reqCountInWindow++;
+                    requests.push({
+                        x: 0,
+                        y: h/2,
+                        vx: 2,
+                        color: isAllowed ? 'green' : 'red',
+                        isAllowed: isAllowed
+                    });
+                }
+
+                // Update and draw requests
+                requests.forEach(req =&gt; {
+                    if (req.isAllowed) {
+                       req.x += req.vx;
+                    } else {
+                       req.x += req.vx / 4;
+                       req.y += (Math.random() - 0.5) * 2; // jitter
+                    }
+                    drawRequest(req);
+                });
+                requests = requests.filter(req =&gt; req.x &lt; w);
+
+                // Draw text
+                ctx.fillStyle = 'black';
+                ctx.font = '16px Noto Sans SC';
+                ctx.fillText(`窗口 ${windowIndex+1}`, windowX + 10, 30);
+                ctx.fillText(`计数: ${reqCountInWindow} / ${limit}`, windowX + 10, 50);
+
+                currentState.animationFrameId = requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        function animateSlidingLog() {
+            let timestamps = [];
+            const windowSize = 5000; // ms
+            const limit = 8;
+            const w = visualizerCanvas.width;
+            const h = visualizerCanvas.height;
+            requests = [];
+            let startTime = Date.now();
+
+            function loop() {
+                const now = Date.now();
+                ctx.clearRect(0, 0, w, h);
+
+                timestamps = timestamps.filter(t =&gt; now - t &lt; windowSize);
+
+                if (Math.random() &lt; 0.1 &amp;&amp; requests.length &lt; MAX_REQUESTS) {
+                    const isAllowed = timestamps.length &lt; limit;
+                    if (isAllowed) timestamps.push(now);
+                     requests.push({
+                        x: 0,
+                        y: h/2 + (Math.random() - 0.5) * 30,
+                        vx: 2,
+                        color: isAllowed ? 'green' : 'red',
+                        isAllowed: isAllowed
+                    });
+                }
+
+                requests.forEach(req =&gt; {
+                    if (req.isAllowed) req.x += req.vx;
+                    else req.x += req.vx/4;
+                    drawRequest(req);
+                });
+                requests = requests.filter(r =&gt; r.x &lt; w);
+
+                // Draw window visualization
+                ctx.strokeStyle = '#36A2EB';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(w/2 - 150, h-40, 300, 30);
+
+                timestamps.forEach(t =&gt; {
+                    const age = now - t;
+                    const xPos = (w/2 - 150) + 300 * (1 - age / windowSize);
+                    ctx.fillStyle = '#36A2EB';
+                    ctx.fillRect(xPos - 2, h-35, 4, 20);
+                });
+
+                ctx.fillStyle = 'black';
+                ctx.font = '16px Noto Sans SC';
+                ctx.fillText(`过去 ${windowSize/1000}s 内的请求日志`, 10, 30);
+                ctx.fillText(`计数: ${timestamps.length} / ${limit}`, 10, 50);
+
+                currentState.animationFrameId = requestAnimationFrame(loop);
+            }
+            loop();
+        }
+        
+        function animateSlidingCounter() {
+             let prevCount = 0;
+             let currentCount = 0;
+             let frameCount = 0;
+             const windowDuration = 300;
+             const limit = 8;
+             const w = visualizerCanvas.width;
+             const h = visualizerCanvas.height;
+
+            function loop() {
+                frameCount++;
+                 if(frameCount &gt;= windowDuration) {
+                     frameCount = 0;
+                     prevCount = currentCount;
+                     currentCount = 0;
+                 }
+                
+                ctx.clearRect(0, 0, w, h);
+
+                const weight = frameCount / windowDuration;
+                const estimatedCount = Math.floor(prevCount * (1 - weight) + currentCount);
+
+                if (Math.random() &lt; 0.1) {
+                     const isAllowed = estimatedCount &lt; limit;
+                     if (isAllowed) currentCount++;
+                     requests.push({
+                        y: 10,
+                        vy: 2,
+                        color: isAllowed ? 'green' : 'red',
+                        isAllowed
+                    });
+                }
+
+                requests.forEach(req =&gt; {
+                    if (req.isAllowed) req.y += req.vy;
+                    drawRequest({x: w/2, y: req.y, color: req.color});
+                });
+                requests = requests.filter(r =&gt; r.y &lt; h);
+
+                // Draw Windows
+                ctx.fillStyle = 'rgba(255, 206, 86, 0.2)';
+                ctx.fillRect(w/4, h-80, w/4, 60);
+                ctx.strokeRect(w/4, h-80, w/4, 60);
+                ctx.fillStyle = 'black';
+                ctx.fillText(`前一窗口: ${prevCount}`, w/4 + 10, h-50);
+                
+                ctx.fillStyle = 'rgba(255, 206, 86, 0.4)';
+                ctx.fillRect(w/2, h-80, w/4, 60);
+                ctx.strokeRect(w/2, h-80, w/4, 60);
+                ctx.fillStyle = 'black';
+                ctx.fillText(`当前窗口: ${currentCount}`, w/2 + 10, h-50);
+
+                // Draw Progress bar
+                ctx.fillStyle = '#ccc';
+                ctx.fillRect(w/2, h-100, w/4, 10);
+                ctx.fillStyle = '#FFCE56';
+                ctx.fillRect(w/2, h-100, (w/4) * weight, 10);
+
+                ctx.font = '16px Noto Sans SC';
+                ctx.fillText(`滑动窗口近似计数: ${estimatedCount} / ${limit}`, 10, 30);
+                ctx.fillText(`计算公式: ${prevCount} * ${(1-weight).toFixed(2)} + ${currentCount} = ${estimatedCount}`, 10, 50);
+                currentState.animationFrameId = requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        function animateTokenBucket() {
+            let tokens = 5;
+            const capacity = 10;
+            const rate = 0.05; // tokens per frame
+            const w = visualizerCanvas.width;
+            const h = visualizerCanvas.height;
+            requests = [];
+
+            function loop() {
+                tokens += rate;
+                if (tokens &gt; capacity) tokens = capacity;
+
+                ctx.clearRect(0, 0, w, h);
+
+                if (Math.random() &lt; 0.1 &amp;&amp; requests.length &lt; MAX_REQUESTS) {
+                     const isAllowed = tokens &gt;= 1;
+                     if (isAllowed) tokens--;
+                     requests.push({
+                        x: 0,
+                        y: h - 20,
+                        vx: 2,
+                        color: isAllowed ? 'green' : 'red',
+                        isAllowed
+                    });
+                }
+
+                requests.forEach(req =&gt; {
+                    req.x += req.vx;
+                    drawRequest(req);
+                });
+                requests = requests.filter(r =&gt; r.x &lt; w);
+
+                // Draw bucket
+                const bucketX = w/2 - 50, bucketY = 50, bucketW = 100, bucketH = 150;
+                ctx.strokeStyle = '#4BC0C0';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(bucketX, bucketY);
+                ctx.lineTo(bucketX, bucketY + bucketH);
+                ctx.lineTo(bucketX + bucketW, bucketY + bucketH);
+                ctx.lineTo(bucketX + bucketW, bucketY);
+                ctx.stroke();
+
+                // Draw tokens
+                ctx.fillStyle = '#4BC0C0';
+                for (let i = 0; i &lt; Math.floor(tokens); i++) {
+                    const x = bucketX + 15 + (i % 5) * 15;
+                    const y = bucketY + bucketH - 15 - Math.floor(i / 5) * 15;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.fillStyle = 'black';
+                ctx.font = '16px Noto Sans SC';
+                ctx.fillText(`令牌数: ${Math.floor(tokens)} / ${capacity}`, 10, 30);
+
+                currentState.animationFrameId = requestAnimationFrame(loop);
+            }
+            loop();
+        }
+        
+        function animateLeakyBucket() {
+             let waterLevel = 0;
+             const capacity = 10;
+             const leakRate = 0.03; // requests per frame
+             const w = visualizerCanvas.width;
+             const h = visualizerCanvas.height;
+             requests = [];
+             
+             function loop() {
+                waterLevel -= leakRate;
+                if (waterLevel &lt; 0) waterLevel = 0;
+                
+                ctx.clearRect(0, 0, w, h);
+
+                if (Math.random() &lt; 0.1) {
+                     const canQueue = waterLevel &lt; capacity;
+                     if (canQueue) waterLevel++;
+                     requests.push({
+                        x: Math.random() * w,
+                        y: 0,
+                        vy: 2,
+                        color: canQueue ? '#9966FF' : 'red',
+                        isQueued: canQueue,
+                        isLeaked: false
+                    });
+                }
+
+                // Leaking requests
+                if (waterLevel &gt; 0) {
+                    const leakedReq = requests.find(r =&gt; r.isQueued &amp;&amp; !r.isLeaked);
+                    if (leakedReq) {
+                       leakedReq.isLeaked = true;
+                       leakedReq.color = 'green';
+                    }
+                }
+
+                requests.forEach(req =&gt; {
+                    if (!req.isQueued) { // Rejected
+                        req.y -= req.vy;
+                    } else if (!req.isLeaked) { // Queued
+                         req.y += req.vy / 2;
+                         if(req.y &gt; 60) req.y = 60;
+                    } else { // Leaked
+                         req.y += req.vy;
+                    }
+                    drawRequest(req);
+                });
+                requests = requests.filter(r =&gt; r.y &lt; h &amp;&amp; r.y &gt; -10);
+
+                // Draw bucket
+                const bucketX = w/2 - 75, bucketY = 50, bucketW = 150, bucketH = 100;
+                ctx.strokeStyle = '#9966FF';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(bucketX, bucketY, bucketW, bucketH);
+                
+                // Draw water level
+                const waterHeight = (waterLevel / capacity) * bucketH;
+                ctx.fillStyle = 'rgba(153, 102, 255, 0.3)';
+                ctx.fillRect(bucketX, bucketY + bucketH - waterHeight, bucketW, waterHeight);
+                
+                // Draw leak
+                ctx.fillStyle = 'green';
+                ctx.fillRect(w/2 - 2, bucketY + bucketH, 4, 10);
+                
+                ctx.fillStyle = 'black';
+                ctx.font = '16px Noto Sans SC';
+                ctx.fillText(`队列长度: ${Math.floor(waterLevel)} / ${capacity}`, 10, 30);
+                
+                currentState.animationFrameId = requestAnimationFrame(loop);
+             }
+             loop();
+        }
+
+        // Initial render
+        render();
+        renderComparisonChart();
+    });
+&lt;/script&gt;
+</code></pre>
 
 </div>
 <div style="font-size:small;margin-top:8px;float:right;"></div>
@@ -117,7 +991,7 @@ if(""!=""){
 </script></div>
 </body>
 <script>
-var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z'};
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z', 'copy': 'M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z', 'check': 'M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'};
 var utterancesLoad=0;
 
 let themeSettings={
@@ -190,7 +1064,70 @@ function iFrameLoading(){
     }
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    const createClipboardHTML = (codeContent, additionalClasses = '') => `
+        <pre class="notranslate"><code class="notranslate">${codeContent}</code></pre>
+        <div class="clipboard-container position-absolute right-0 top-0 ${additionalClasses}">
+            <clipboard-copy class="ClipboardButton btn m-2 p-0" role="button" style="display: inherit;">
+                <svg height="16" width="16" class="octicon octicon-copy m-2"><path d="${IconList["copy"]}"></path></svg>
+                <svg height="16" width="16" class="octicon octicon-check color-fg-success m-2 d-none"><path d="${IconList["check"]}"></path></svg>
+            </clipboard-copy>
+            <div class="copy-feedback">Copied!</div>
+        </div>
+    `;
 
+    const handleCodeElements = (selector = '') => {
+        document.querySelectorAll(selector).forEach(codeElement => {
+            const codeContent = codeElement.innerHTML;
+            const newStructure = document.createElement('div');
+            newStructure.className = 'snippet-clipboard-content position-relative overflow-auto';
+            newStructure.innerHTML = createClipboardHTML(codeContent);
+
+            const parentElement = codeElement.parentElement;
+            if (selector.includes('highlight')) {
+                parentElement.insertBefore(newStructure, codeElement.nextSibling);
+                parentElement.removeChild(codeElement);
+            } else {
+                parentElement.parentElement.replaceChild(newStructure, parentElement);
+            }
+        });
+    };
+
+    handleCodeElements('pre.notranslate > code.notranslate');
+    handleCodeElements('div.highlight > pre.notranslate');
+
+    let currentFeedback = null;
+    document.querySelectorAll('clipboard-copy').forEach(copyButton => {
+        copyButton.addEventListener('click', () => {
+            const codeContent = copyButton.closest('.snippet-clipboard-content').innerText;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = codeContent;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            const copyIcon = copyButton.querySelector('.octicon-copy');
+            const checkIcon = copyButton.querySelector('.octicon-check');
+            const copyFeedback = copyButton.nextElementSibling;
+
+            if (currentFeedback && currentFeedback !== copyFeedback) {currentFeedback.style.display = 'none';}
+            currentFeedback = copyFeedback;
+
+            copyIcon.classList.add('d-none');
+            checkIcon.classList.remove('d-none');
+            copyFeedback.style.display = 'block';
+            copyButton.style.borderColor = 'var(--color-success-fg)';
+
+            setTimeout(() => {
+                copyIcon.classList.remove('d-none');
+                checkIcon.classList.add('d-none');
+                copyFeedback.style.display = 'none';
+                copyButton.style.borderColor = '';
+            }, 2000);
+        });
+    });
+});
 
 </script>
 
