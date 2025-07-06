@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html data-color-mode="light" data-dark-theme="dark" data-light-theme="light" lang="zh-CN">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
+    
+    <link rel="icon" href="https://avatars.githubusercontent.com/u/68176923?v=4"><script>
+        let theme = localStorage.getItem("meek_theme") || "light";
+        document.documentElement.setAttribute("data-color-mode", theme);
+    </script>
+<meta name="description" content="### 引言：MongoDB 文档的无名英雄
+
+在 MongoDB 中，每个集合内的文档都必须有一个唯一的标识符，即 `_id` 字段，它充当文档的主键。">
+<meta property="og:title" content="分布式ID设计：以MongoDB ObjectId为例">
+<meta property="og:description" content="### 引言：MongoDB 文档的无名英雄
+
+在 MongoDB 中，每个集合内的文档都必须有一个唯一的标识符，即 `_id` 字段，它充当文档的主键。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/fen-bu-shi-ID-she-ji-%EF%BC%9A-yi-MongoDB%20ObjectId-wei-li.html">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/68176923?v=4">
+<title>分布式ID设计：以MongoDB ObjectId为例</title>
+
+
+
+</head>
+<style>
+body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
+#footer {margin-top:64px; text-align: center;font-size: small;}
+
+</style>
+
+<style>
+.postTitle{margin: auto 0;font-size:40px;font-weight:bold;}
+.title-right{display:flex;margin:auto 0 0 auto;}
+.title-right .circle{padding: 14px 16px;margin-right:8px;}
+#postBody{border-bottom: 1px solid var(--color-border-default);padding-bottom:36px;}
+#postBody hr{height:2px;}
+#cmButton{height:48px;margin-top:48px;}
+#comments{margin-top:64px;}
+.g-emoji{font-size:24px;}
+@media (max-width: 600px) {
+    body {padding: 8px;}
+    .postTitle{font-size:24px;}
+}
+
+</style>
+
+
+
+
+<body>
+    <div id="header">
+<h1 class="postTitle">分布式ID设计：以MongoDB ObjectId为例</h1>
+<div class="title-right">
+    <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathHome" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+    <a href="https://github.com/hanlinyuanexplosivescholar/tech-reborn.github.io/issues/5" target="_blank" class="btn btn-invisible circle" title="Issue">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathIssue" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+
+    <a class="btn btn-invisible circle" onclick="modeSwitch();" title="切换主题">
+        <svg class="octicon" width="16" height="16" >
+            <path id="themeSwitch" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+
+</div>
+</div>
+    <div id="content">
+<div class="markdown-body" id="postBody"><h3>引言：MongoDB 文档的无名英雄</h3>
+<p>在 MongoDB 中，每个集合内的文档都必须有一个唯一的标识符，即 <code class="notranslate">_id</code> 字段，它充当文档的主键。默认情况下，MongoDB 利用一种特殊的 12 字节 BSON 数据类型，称为 ObjectId，来实现这一目的。ObjectId 不仅仅是一个随机字符串；它是一个精心设计的标识符，对于 MongoDB 的分布式架构和高效数据管理至关重要。</p>
+<p>MongoDB 的设计核心在于分布式系统和横向扩展能力。传统关系型数据库中常见的自增 ID 本质上需要一个中央协调器来确保唯一性，这在分布式环境中会成为性能瓶颈和单点故障。而 UUID 虽然是全局唯一的且去中心化，但其体积更大（16 字节），并且在某些索引场景下可能引入性能问题。ObjectId 以 12 字节的体积，在两者之间取得了平衡：它比 UUID 更小，包含时间戳以实现大致的排序，并且其生成是去中心化的，这意味着客户端无需咨询数据库服务器即可生成它。这种深思熟虑的设计使得 ObjectId 天然适用于 MongoDB 的分布式、高吞吐量特性，最大限度地减少了协调开销，并通过提供一个健壮的开箱即用唯一标识符来简化应用程序开发。</p>
+<p>本文将深入探讨 ObjectId 的巧妙设计，包括其结构、生成方式、使其稳健的原则以及对应用程序的实际影响。理解 ObjectId 对于优化性能、确保数据完整性以及构建可扩展的 MongoDB 解决方案至关重要。</p>
+<h3>1. ObjectId 的剖析：一个 12 字节的奇迹</h3>
+<p>MongoDB 的 ObjectId 是一个 12 字节（96 位）的 BSON 类型，通常表示为 24 个字符的十六进制字符串（例如，<code class="notranslate">5f92cbf10cf217478ba93561</code>）。这个紧凑的结构包含了惊人的信息量，旨在确保在各种环境中保持唯一性。</p>
+<p>这 12 个字节被战略性地划分为三个关键部分：</p>
+<ul>
+<li>前 4 字节：Unix 时间戳（大端序）<br>
+这 4 个字节表示文档的创建时间，以自 Unix 纪元（1970 年 1 月 1 日 UTC）以来的秒数衡量。这使得文档可以按大致的时间顺序进行排序。时间戳是一个 32 位无符号整数，这将其可用范围扩展到 2106 年，从而解决了 32 位有符号整数的“2038 年问题”。</li>
+<li>接下来的 5 字节：机器和进程的唯一随机值<br>
+这个部分对于确保跨不同机器和进程的唯一性至关重要。它在每个客户端进程（如果 _id 在服务器端生成，则在服务器进程）中生成一次，并且对该特定机器和进程是唯一的。如果进程重新启动，此值将重新生成。重要的是，这个随机值不需要是加密安全的。<br>
+在历史演变中，这个 5 字节的随机值取代了旧的结构，该结构明确使用了 3 字节的机器标识符和 2 字节的进程 ID。MongoDB 规范在 2018 年左右（MongoDB 3.4+）进行了更新，将这些合并为一个 5 字节的随机值。这一变化旨在标准化不同语言驱动程序的行为，简化实现，并解决与先前用于机器 ID 的 MD5 散列算法相关的 FIPS 合规性问题。这种设计选择显著增强了 ObjectId 的韧性，使其适用于云原生、微服务架构，即使应用程序实例频繁伸缩或迁移，也不会损害 ID 的唯一性。</li>
+<li>最后 3 字节：递增计数器（大端序）<br>
+这个计数器以一个随机值开始，并在同一进程中每秒生成一个 ObjectId 时递增。这确保了在同一进程中快速创建文档时的唯一性。计数器是 3 字节，允许在同一进程中每秒生成 2^24 (16,777,216) 个唯一值。虽然理论上，如果在同一台机器上的同一进程中每秒创建超过 1600 万个 ObjectId，可能会出现重复，但这在实际场景中极为罕见。<br>
+时间戳和计数器字段都以大端序存储。这一设计选择至关重要，因为它允许使用 <code class="notranslate">memcmp</code>（内存比较）直接比较 ObjectId，从而确保它们在排序时大致按时间顺序排列。<br>
+尽管 ObjectId 被宣称“在所有实际用途中都是全局唯一的”，但计数器溢出（每秒每进程 1600 万个 ID）和客户端之间时钟偏差的已知问题意味着它们在所有可想象的极端或恶意条件下并非绝对唯一。然而，时间戳、随机进程值和递增计数器结合起来的熵使得在实际应用场景中发生冲突的可能性微乎其微。这代表了一种务实的设计选择，平衡了对绝对保证的渴望与分布式系统中性能和去中心化生成的实际需求。因此，需要理解这里的“唯一”提供的是一个极其强大的实际保证，而非数学上不可能发生冲突。对于要求加密安全或数学上绝对唯一性的场景，可能需要考虑其他 ID 策略，但这通常会带来性能或复杂性的权衡。</li>
+</ul>
+<h3><strong>表：ObjectId 组件分解</strong></h3>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>组件</th>
+<th>字节数</th>
+<th>用途</th>
+<th>演变/特性说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unix 时间戳</td>
+<td>4</td>
+<td>创建时间（自 Unix 纪元以来的秒数）</td>
+<td>无符号 32 位，可用至 2106 年。大端序，用于排序。</td>
+</tr>
+<tr>
+<td>随机值</td>
+<td>5</td>
+<td>机器和进程的唯一标识</td>
+<td>取代了旧的机器 ID（3 字节）+ 进程 ID（2 字节），以实现更好的驱动程序一致性和 FIPS 合规性。每个进程生成一次，重新启动时重新生成。非加密安全。</td>
+</tr>
+<tr>
+<td>递增计数器</td>
+<td>3</td>
+<td>确保同一秒/进程内的唯一性</td>
+<td>初始化为随机值。递增。理论上可能溢出（每秒每进程 1600 万个 ID）。大端序，用于排序。</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<h3>2. ObjectId 的生成与使用</h3>
+<ul>
+<li><strong>自动生成：</strong> 在大多数 MongoDB 应用程序中，开发人员通常不需要显式创建 ObjectId。当一个文档被插入到集合中而没有指定 <code class="notranslate">_id</code> 字段时，MongoDB 驱动程序（客户端）会自动生成一个 ObjectId 并将其分配给 <code class="notranslate">_id</code> 字段，然后将文档发送到数据库。如果客户端没有提供 <code class="notranslate">_id</code>，<code class="notranslate">mongod</code> 服务器也会生成一个。这种客户端生成是一种重要的设计选择，因为它避免了为 ID 分配而进行服务器往返，从而提高了性能，尤其是在高吞吐量场景中。将此职责推给客户端，最大限度地减少了网络通信量，并允许更快地准备和插入文档。这直接有助于 MongoDB 的高写入吞吐量能力，是可扩展应用程序的强大推动力。它还允许在将相关文档发送到服务器之前，使用已知 <code class="notranslate">_id</code> 在事务中准备这些文档。</li>
+<li><strong>手动创建与实用方法：</strong> 尽管自动生成是常见的做法，但也可以手动创建 ObjectId 或与现有 ObjectId 进行交互：
+<ul>
+<li><code class="notranslate">ObjectId()</code>：此构造函数允许生成一个新的 ObjectId。例如，<code class="notranslate">newObjectId = ObjectId()</code> 会创建一个全新的唯一 ID。也可以传递一个 24 个字符的十六进制字符串或一个整数时间戳来创建特定的 ObjectId。</li>
+<li><code class="notranslate">getTimestamp()</code>：此方法从 ObjectId 中提取创建时间戳，并将其作为 Date 对象返回。这对于了解文档的创建时间非常有用，而无需额外的 <code class="notranslate">createdAt</code> 字段。</li>
+<li><code class="notranslate">toString()</code> / <code class="notranslate">.str</code>：这些方法将 ObjectId 对象转换为其 24 个字符的十六进制字符串表示形式。</li>
+<li><code class="notranslate">valueOf()</code>：返回给定字符串字面量的十六进制表示形式。</li>
+</ul>
+</li>
+<li><strong>使用 ObjectId 进行查询：</strong> 鉴于 <code class="notranslate">_id</code> 是主键且自动建立索引，通过 ObjectId 查询文档效率极高。例如，<code class="notranslate">db.collection.findOne({ _id: ObjectId("hex_string") })</code> 会利用底层索引实现快速检索。</li>
+</ul>
+<h3>3. 设计理念：唯一性、顺序性和效率</h3>
+<p>ObjectId 的设计是 MongoDB 理念的体现，即在分布式系统现实中平衡强大的保证。</p>
+<ul>
+<li><strong>保证唯一性（实际上的全局唯一）：</strong> 时间戳、机器和进程的唯一随机值以及递增计数器的组合，使得 ObjectId 在不同机器、进程甚至同一秒内都具有实际上的唯一性。这种分布式唯一性对于横向扩展的 NoSQL 数据库至关重要，避免了对中央 ID 生成服务的需求，因为中央服务可能成为瓶颈或单点故障。</li>
+<li><strong>大致按创建时间排序（K-可排序）：</strong> 由于 ObjectId 的前四个字节代表 Unix 时间戳，ObjectId 大致可以按创建时间排序。这种特性通常被称为“k-可排序”，意味着后插入的文档通常会有更高的 <code class="notranslate">_id</code> 值。
+<ul>
+<li><strong>对索引的好处：</strong> 这种大致的顺序对于索引非常有益。当查询按插入顺序排序（例如，<code class="notranslate">_id: 1</code>）时，MongoDB 可以高效地遍历 <code class="notranslate">_id</code> 索引，该索引自然地按时间排序。这可以减少索引碎片，提高查询性能，特别是对于时间序列数据或活动流。</li>
+<li><strong>严格排序的注意事项：</strong> 重要的是要理解 ObjectId 并非严格单调递增，也无法保证绝对的插入顺序。
+<ul>
+<li><strong>一秒分辨率：</strong> 时间戳组件的分辨率为一秒。在同一秒内生成的多个 ObjectId 之间没有保证的相对顺序，因为它们在该秒内的唯一性取决于随机值和递增计数器。</li>
+<li><strong>客户端时钟偏差：</strong> 由于 ObjectId 通常由客户端驱动程序生成，不同客户端机器或应用程序服务器之间的系统时钟差异（时钟偏差）可能导致 ObjectId 的生成顺序不严格按时间顺序。一个由客户端 A 生成的文档可能比客户端 B 生成的文档具有更早的时间戳，即使客户端 B 的文档是稍后才插入到数据库中的。ObjectId 这种“大致可排序”但“非严格单调递增”的特性揭示了分布式系统设计中的一个根本性权衡。在没有中央协调器的情况下实现绝对的全局时间顺序非常困难，并且通常会引入性能瓶颈。ObjectId 优先考虑去中心化、快速生成和实际唯一性，接受严格的时间顺序可能因时钟偏差或同一秒内快速生成等因素而受到影响。这种务实的方法是许多可扩展 NoSQL 系统的标志。因此，在分布式应用程序中，开发人员应避免依赖 <code class="notranslate">_id</code> 来实现严格的时间顺序。对于严格的排序，可能需要显式的时间戳字段（例如，<code class="notranslate">createdAt</code>）或专用的、集中协调的序列生成器，尽管这些会带来自身的性能和复杂性成本。</li>
+<li><strong>“发生在前”问题：</strong> 片段明确提到了分布式系统中的“发生在前”问题，即客户端 1 在客户端 2 之前生成了一个 <code class="notranslate">_id</code>，但客户端 2 先提交了更改。这直接与由于客户端生成和时钟偏差导致的 ObjectId 非严格排序相关。它强调了生成时间（嵌入在 ObjectId 中）和提交时间（文档实际持久化时）在分布式集群中不一定相同或严格有序。这进一步强调了在设计依赖精确事件排序的分布式应用程序时需要仔细考虑。<code class="notranslate">_id</code> 对于唯一性和一般基于时间的排序非常有用，但不能保证跨多个客户端或服务器的事件确切序列。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>轻量级和快速生成：</strong> ObjectId 被设计为快速高效地生成，无需数据库服务器之间的协调。这种去中心化的生成过程显著有助于 MongoDB 的高写入性能和分布式环境中的可扩展性。</li>
+</ul>
+<h3>4. ObjectId 在实践中的应用：对索引、查询和分片的影响</h3>
+<p>ObjectId 的设计对 MongoDB 中数据的管理和访问方式有着重要的影响。</p>
+<ul>
+<li><strong>默认索引和查询效率：</strong>
+<ul>
+<li>每个 MongoDB 集合在创建时都会自动在 <code class="notranslate">_id</code> 字段上创建一个唯一索引。这个唯一索引确保在集合中没有两个文档可以拥有相同的 <code class="notranslate">_id</code> 值。</li>
+<li>这种默认索引使得基于 <code class="notranslate">_id</code> 的查询效率极高，因为 MongoDB 可以使用 B 树索引结构快速定位特定文档。</li>
+</ul>
+</li>
+<li><strong>分片考量：</strong>
+<ul>
+<li>分片是 MongoDB 将数据分布到多台机器上的方法，以处理超大型数据集和高吞吐量操作。分片键决定了数据如何分布。</li>
+<li>尽管 <code class="notranslate">_id</code> 可以作为分片键，但其大致单调递增的特性（由于领先的时间戳）可能导致一个常见问题，即“热点”。</li>
+<li><strong>热点问题：</strong> 当集合在像 ObjectId 这样单调递增的字段上进行分片时，新文档通常会写入同一个分片和块。这个“热点分片”或“热点块”会接收大部分写入流量，导致集群中负载分布不均。其他分片可能未充分利用，而一个分片则过载，从而对整体性能和可扩展性产生负面影响。ObjectId 有利于排序和索引的特性（领先的时间戳）在分片环境中反而可能成为潜在的负面因素。在分片设置中，对“时间有序”数据的需求通常与对“均匀数据分布”的需求相冲突。如果所有新写入都流向基于“最新时间”的分片，就会造成不平衡。这是一个经典的分布式系统挑战：优化一种访问模式（基于时间的读取）可能会导致另一种访问模式（分布式写入）的性能下降。</li>
+<li><strong>缓解措施：哈希分片：</strong> 为了防止单调递增键导致的热点问题，MongoDB 提供了“哈希分片”。它不是使用原始的 <code class="notranslate">_id</code> 值，而是使用 <code class="notranslate">_id</code> 的哈希版本作为分片键。哈希分片将数据更均匀地分布到各个分片上，确保新写入分散开来，而不是集中在单个分片上。因此，开发人员必须仔细选择分片键。对于写入量大且新数据主要基于时间的集合，使用哈希分片键（即使是在 <code class="notranslate">_id</code> 或 <code class="notranslate">createdAt</code> 字段上）通常是确保写入负载均衡的更优策略，即使这会牺牲分片键本身基于时间的范围查询能力。</li>
+<li><strong>分片集群中的唯一性：</strong> 如果 <code class="notranslate">_id</code> 未用作分片键，应用程序仍必须确保 <code class="notranslate">_id</code> 值的唯一性。MongoDB 的自动生成 ObjectId 自然地处理了这一点。</li>
+<li><strong>复制中的“隐藏”作用：</strong> 片段提到 <code class="notranslate">_id</code> 是“数据复制的支柱”，并且“作为唯一的跨服务器标识符，允许多个节点精确识别并应用更改操作到其自身数据集中的同步文档”。这意味着 <code class="notranslate">_id</code>（以及 ObjectId）的强大唯一性和不变性是 MongoDB 副本集如何确保数据一致性以及如何在节点之间应用操作的基础。因此，ObjectId 的设计不仅关乎客户端唯一性；它支撑着 MongoDB 内部实现高可用性和复制环境中数据一致性的机制，使其成为整个数据库系统的基础要素。</li>
+</ul>
+</li>
+</ul>
+<h3>5. ObjectId 与自定义 ID：何时选择</h3>
+<p>尽管 ObjectId 是默认且通常是最佳选择，但 MongoDB 的灵活性允许使用自定义 <code class="notranslate">_id</code> 值。选择取决于应用程序对可读性、唯一性、存储和性能特征的特定要求。</p>
+<ul>
+<li>
+<p><strong>ObjectId（默认且推荐）：</strong></p>
+<ul>
+<li><strong>优点：</strong>
+<ul>
+<li><strong>自动生成：</strong> 实现最简单；驱动程序无缝处理。</li>
+<li><strong>保证唯一性：</strong> 在实际场景中，即使在分布式系统中，也极不可能产生重复。</li>
+<li><strong>嵌入时间戳：</strong> 允许按创建时间排序，无需额外字段即可检索创建时间。</li>
+<li><strong>高效索引：</strong> 自动索引，实现快速 <code class="notranslate">_id</code> 查询。</li>
+<li><strong>紧凑尺寸：</strong> 12 字节，比 UUID（16 字节）小，文档略小，内存/磁盘使用量略低。</li>
+<li><strong>分布式友好：</strong> 客户端生成，无需中央协调。</li>
+</ul>
+</li>
+<li><strong>缺点：</strong>
+<ul>
+<li><strong>可读性：</strong> 长十六进制字符串不易于人类阅读，尤其是在 URL 中。</li>
+<li><strong>可猜测性：</strong> 非加密随机；可被猜测，因此安全性不应依赖于 ID 的模糊性。</li>
+<li><strong>时间戳泄露：</strong> 创建时间暴露在外。</li>
+<li><strong>非严格单调：</strong> 由于一秒分辨率和时钟偏差，不适用于严格的时间顺序排序。</li>
+<li><strong>供应商锁定（感知）：</strong> 某些企业可能更喜欢独立于特定数据库产品的 ID。</li>
+</ul>
+</li>
+<li><strong>相关片段：</strong> 。</li>
+</ul>
+</li>
+<li>
+<p><strong>自定义 ID（字符串、整数、UUID）：</strong></p>
+<ul>
+<li><strong>何时使用：</strong>
+<ul>
+<li>当数据已具有自然唯一标识符时（例如，电子邮件地址、来自其他系统的 UUID、产品 SKU）。</li>
+<li>当需要特定格式时（例如，12 位银行账号）。</li>
+<li>当需要严格单调递增的 ID 时（尽管这在分布式系统中具有挑战性）。</li>
+</ul>
+</li>
+<li><strong>自定义 ID 的一般注意事项：</strong>
+<ul>
+<li>在集合中必须是唯一的。</li>
+<li>一旦设置，必须是不可变的。</li>
+<li>为获得更好的查询性能，简单数据类型（字符串、整数）优于复杂对象。</li>
+</ul>
+</li>
+<li><strong>相关片段：</strong> 。</li>
+</ul>
+</li>
+<li>
+<p><strong>与 UUID（通用唯一标识符）的比较：</strong></p>
+<ul>
+<li><strong>主要特点：</strong> 16 字节（128 位）值。无需依赖外部状态即可生成。</li>
+<li><strong>优点：</strong> 真正全局唯一（理论上碰撞抵抗力高于 ObjectId），无状态生成，提供安全感（难以猜测）。UUIDv1 包含时间戳信息。</li>
+<li><strong>缺点：</strong> 可读性低于整数或 ObjectId。存储占用更大（16 字节）。UUIDv1 由于字节顺序问题，不能自然地按创建时间排序。在具有聚簇主键的数据库（如 MySQL/Oracle）中，由于索引重新排序，可能损害插入性能。</li>
+<li><strong>MongoDB 特有：</strong> 为了高效存储和索引，UUID 应作为 BSON BinData 并使用适当的子类型存储。</li>
+</ul>
+</li>
+<li>
+<p><strong>与自增整数的比较：</strong></p>
+<ul>
+<li><strong>主要特点：</strong> 简单、顺序的数字。</li>
+<li><strong>优点：</strong> 高度可读，非常紧凑（例如，8 字节长整型）。</li>
+<li><strong>缺点：</strong> 不适用于分布式系统（没有中央协调时存在重复风险）。需要咨询数据库（或单独的服务）以获取下一个 ID，从而产生潜在的单点故障 (SPOF) 和瓶颈。暴露业务数据（容易扫描范围）。</li>
+</ul>
+<p>对 ObjectId、UUID 和自增整数的广泛比较表明，没有单一的“最佳”ID 策略。每种策略都有其优缺点，尤其是在分布式系统方面。MongoDB 允许自定义 <code class="notranslate">_id</code> 的灵活性 使开发人员能够根据特定的应用程序需求（例如，需要可读性的面向公众的 URL 与需要高吞吐量生成的内部 ID）选择“最适合的工具”。开发人员在决定 <code class="notranslate">_id</code> 策略之前，应仔细分析其应用程序的 ID 需求（例如，唯一性范围、可排序性、可读性、安全性、写入模式），而不是盲目遵循默认设置或外部模式。<br>
+关于 UUID“可读性较低”但提供“安全感” 以及 ObjectId 在 URL 中“嘈杂” 的讨论揭示了 ID 设计中常见的权衡。通常，易于人类阅读或猜测的 ID（如自增整数）在分布式系统中安全性或可扩展性较低。相反，高度唯一且可扩展的 ID（如 UUID 或 ObjectId）往往对人类不太友好。应用程序设计需要考虑 ID 在何处暴露（例如，内部与外部 API、URL）。对于面向公众的 ID，除了内部 ObjectId 之外，还可以使用单独的、更人性化的标识符（如 slug 或短代码），或者可以接受 UUID 的安全感知，尽管其可读性存在问题。</p>
+</li>
+</ul>
+<h3><strong>表：ObjectId vs. UUID vs. 自增整数</strong></h3>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>特性</th>
+<th>MongoDB ObjectId</th>
+<th>UUID（例如，v4）</th>
+<th>自增整数</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>大小</strong></td>
+<td>12 字节 (96 位)</td>
+<td>16 字节 (128 位)</td>
+<td>4 或 8 字节 (int/long)</td>
+</tr>
+<tr>
+<td><strong>唯一性范围</strong></td>
+<td>实际上的全局唯一（机器、进程、时间）</td>
+<td>全局唯一（极低碰撞概率）</td>
+<td>限于单个数据库/表（分布式唯一性需协调）</td>
+</tr>
+<tr>
+<td><strong>生成方式</strong></td>
+<td>客户端（多数），去中心化</td>
+<td>客户端，无状态</td>
+<td>服务器端，中心化（需数据库查询/服务）</td>
+</tr>
+<tr>
+<td><strong>按创建时间排序</strong></td>
+<td>大致可排序（前 4 字节为时间戳）</td>
+<td>非自然可排序（UUIDv1 含时间戳但字节序问题）</td>
+<td>严格可排序（如果严格顺序）</td>
+</tr>
+<tr>
+<td><strong>可读性</strong></td>
+<td>低（24 字符十六进制字符串）</td>
+<td>非常低（复杂十六进制字符串）</td>
+<td>高（简单整数）</td>
+</tr>
+<tr>
+<td><strong>性能（写入）</strong></td>
+<td>高（快速，无需协调）</td>
+<td>高（快速，无需协调）</td>
+<td>低（因序列化/协调而成为瓶颈）</td>
+</tr>
+<tr>
+<td><strong>分片适用性</strong></td>
+<td>配合哈希分片良好；单调性可能导致范围分片热点</td>
+<td>良好（随机分布有助于避免热点）</td>
+<td>差（单调性导致严重热点，非分布式）</td>
+</tr>
+<tr>
+<td><strong>安全性（可猜测性）</strong></td>
+<td>可猜测（非随机）</td>
+<td>难以猜测（随机）</td>
+<td>容易猜测（顺序）</td>
+</tr>
+<tr>
+<td><strong>是否嵌入时间戳？</strong></td>
+<td>是（前 4 字节）</td>
+<td>是（UUIDv1），否（UUIDv4）</td>
+<td>否</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<h3>6. 应对潜在陷阱与最佳实践</h3>
+<p>尽管 ObjectId 是一个健壮的解决方案，但了解其细微差别和潜在陷阱对于有效的 MongoDB 应用程序设计至关重要。</p>
+<ul>
+<li>
+<p><strong>时钟偏差与严格排序：</strong></p>
+<ul>
+<li><strong>陷阱：</strong> 由于 ObjectId 主要在客户端生成，客户端机器或应用程序服务器之间系统时钟的差异（时钟偏差）可能导致 ObjectId 的生成顺序不严格按时间顺序。这意味着一个较晚创建的 ObjectId 如果其生成客户端的时钟落后，可能会显示较早的时间戳。</li>
+<li><strong>最佳实践：</strong> 特别是在高度分布式环境中，不要依赖 ObjectId 来实现严格的、绝对的时间插入顺序。如果严格排序是关键要求（例如，用于审计日志），请考虑添加由同步服务器管理的显式 <code class="notranslate">createdAt</code> 字段，或使用有上限集合（及其相关限制）。</li>
+</ul>
+</li>
+<li>
+<p><strong>安全性与可猜测性：</strong></p>
+<ul>
+<li><strong>陷阱：</strong> ObjectId 并非加密随机的，其结构（时间戳 + 随机值 + 计数器）使其具有一定的可预测性。虽然不像自增整数那样直观，但它们并非为了通过模糊性来提供安全性而设计。攻击者可能会推断创建时间，或尝试通过递增计数器或操纵时间戳来猜测其他 ID。</li>
+<li><strong>最佳实践：</strong> 绝不能依赖 ObjectId 的模糊性或不可猜测性来确保安全性。无论 <code class="notranslate">_id</code> 格式如何，都应在应用程序层面实施健壮的访问控制机制 (ACL) 和授权层来保护敏感数据。</li>
+</ul>
+</li>
+<li>
+<p><strong>URL 和用户界面中的可读性：</strong></p>
+<ul>
+<li><strong>陷阱：</strong> ObjectId 的 24 个字符的十六进制字符串格式在直接暴露于 RESTful URL 或用户界面时可能显得“嘈杂”且“不友好”。它们不容易被最终用户输入或记住。</li>
+<li><strong>最佳实践：</strong> 对于面向公众的 URL 或用户可见的标识符，除了内部 ObjectId 之外，可以考虑使用人性化的“slug”或短代码。例如，<code class="notranslate">/resource/5f92cbf10cf217478ba93561/friendly-resource-name</code>。ObjectId 仍然是数据库操作的主键，而 slug 则提供更好的用户体验。</li>
+</ul>
+</li>
+<li>
+<p><strong>容器化环境与进程 ID/随机值：</strong></p>
+<ul>
+<li><strong>考量：</strong> 在动态容器化环境（如 Docker 或 Kubernetes）中，进程可能生命周期短且频繁重启。ObjectId 的 5 字节随机值组件是“每个进程生成一次”，并且“如果进程重启则重新生成”。这种设计通过确保为每个新的进程实例生成一个新的唯一组件，固有地处理了容器的瞬时性，从而保持了唯一性。</li>
+<li><strong>最佳实践：</strong> 尽管 ObjectId 的设计对于这些环境是健壮的，但仍需注意极高的进程重启率与同一秒内极高的文档插入率相结合的情况，尽管理论上的碰撞风险仍然极低。</li>
+</ul>
+</li>
+<li>
+<p><strong><code class="notranslate">_id</code> 的一般最佳实践：</strong></p>
+<ul>
+<li><strong>优先使用默认 ObjectId：</strong> 对于绝大多数用例，允许 MongoDB 驱动程序自动生成 ObjectId 是最简单、最可靠且通常是最佳的方法。</li>
+<li><strong>谨慎使用自定义 ID：</strong> 仅当存在强烈的业务或集成需求时才使用自定义 <code class="notranslate">_id</code> 值。确保它们真正唯一，并考虑它们对索引和查询性能的影响。</li>
+<li><strong>监控分片：</strong> 如果在分片集群中使用 ObjectId 作为分片键，请监控分片分布，并考虑使用哈希分片以防止热点。</li>
+</ul>
+<p>上述各种“陷阱”（时钟偏差、可猜测性、URL 可读性）并非 ObjectId 设计的缺陷，而是构建分布式应用程序时开发人员必须考虑的固有特性。ObjectId 针对分布式唯一性和性能进行了优化，而非为了人类可读性或加密安全性。列出的最佳实践本质上是构建健壮系统的防御性编程策略，这些系统建立在一个高度优化但并非普遍完美的标识符之上。深入理解 ObjectId 的设计有助于开发人员预测和缓解潜在问题，从而构建更具韧性和更安全的应用程序。它将确保某些属性（如严格顺序或安全性）的负担从 ID 本身转移到应用程序层，在那里可以更有效地管理。</p>
+</li>
+</ul>
+<h3>结论：MongoDB ObjectId 的持久价值</h3>
+<p>MongoDB 的 ObjectId 远不止一个随机数字；它是一个巧妙设计的 12 字节标识符，是分布式 NoSQL 数据库中文档管理的核心支柱。其设计融合了时间戳、唯一的随机值和递增计数器，巧妙地平衡了唯一性、近似时间排序以及高效、去中心化生成等关键要求。</p>
+<p>ObjectId 的设计完美地体现了 MongoDB 的核心原则：天生分布式、高度可扩展且灵活。其无需中央协调即可生成的能力直接支持横向扩展。其嵌入式时间戳有助于常见的查询模式。其 BSON 类型与 MongoDB 的文档模型无缝集成。它是数据库整体架构理念的一个缩影。因此，理解 ObjectId 不仅仅是关于一个字段；它是理解 MongoDB 内部基本设计选择和权衡的门户，使开发人员能够构建与数据库优势相符的应用程序。</p>
+<p>虽然 ObjectId 带来了巨大的好处，特别是对于索引和一般数据组织，但开发人员必须注意其细微之处，例如其非严格单调性以及在分片环境中用作范围分片键时可能出现的热点。通过理解这些设计规则并应用最佳实践，可以充分利用 ObjectId 的强大功能，构建高度可扩展、高性能和健壮的 MongoDB 应用程序。</p>
+<p><strong>关键要点：</strong></p>
+<ul>
+<li>ObjectId 是 MongoDB 默认的、高效且实际上的全局唯一主键。</li>
+<li>其结构嵌入了创建时间戳，使其大致按时间排序。</li>
+<li>客户端生成可提高写入性能。</li>
+<li>在处理严格时间顺序和分片集群中的热点时要谨慎。</li>
+<li>仅当特定需求超过 ObjectId 的优势时才选择自定义 ID。</li>
+<li>安全性应始终在应用程序层处理，而不是依赖 ID 模糊性。</li>
+</ul></div>
+<div style="font-size:small;margin-top:8px;float:right;"></div>
+
+<button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
+<div class="comments" id="comments"></div>
+
+</div>
+    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io">reborn's technical blog</a></div>
+<div id="footer2">
+    <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
+</div>
+
+<script>
+var now=new Date();
+document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+
+if(""!=""){
+    var startSite=new Date("");
+    var diff=now.getTime()-startSite.getTime();
+    var diffDay=Math.floor(diff/(1000*60*60*24));
+    document.getElementById("runday").innerHTML="网站运行"+diffDay+"天"+" • ";
+}
+</script></div>
+</body>
+<script>
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z'};
+var utterancesLoad=0;
+
+let themeSettings={
+    "dark": ["dark","moon","#00f0ff","dark-blue"],
+    "light": ["light","sun","#ff5000","github-light"],
+    "auto": ["auto","sync","","preferred-color-scheme"]
+};
+function changeTheme(mode, icon, color, utheme){
+    document.documentElement.setAttribute("data-color-mode",mode);
+    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
+    document.getElementById("themeSwitch").parentNode.style.color=color;
+    if(utterancesLoad==1){utterancesTheme(utheme);}
+}
+function modeSwitch(){
+    let currentMode=document.documentElement.getAttribute('data-color-mode');
+    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
+    localStorage.setItem("meek_theme", newMode);
+    if(themeSettings[newMode]){
+        changeTheme(...themeSettings[newMode]);
+    }
+}
+function utterancesTheme(theme){
+    const message={type:'set-theme',theme: theme};
+    const iframe=document.getElementsByClassName('utterances-frame')[0];
+    iframe.contentWindow.postMessage(message,'https://utteranc.es');
+}
+if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
+console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
+</script>
+
+<script>
+document.getElementById("pathHome").setAttribute("d",IconList["home"]);
+document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
+
+
+
+function openComments(){
+    cm=document.getElementById("comments");
+    cmButton=document.getElementById("cmButton");
+    cmButton.innerHTML="loading";
+    span=document.createElement("span");
+    span.setAttribute("class","AnimatedEllipsis");
+    cmButton.appendChild(span);
+
+    script=document.createElement("script");
+    script.setAttribute("src","https://utteranc.es/client.js");
+    script.setAttribute("repo","hanlinyuanexplosivescholar/tech-reborn.github.io");
+    script.setAttribute("issue-term","title");
+    
+    if(localStorage.getItem("meek_theme")=="dark"){script.setAttribute("theme","dark-blue");}
+    else if(localStorage.getItem("meek_theme")=="light") {script.setAttribute("theme","github-light");}
+    else{script.setAttribute("theme","preferred-color-scheme");}
+    
+    script.setAttribute("crossorigin","anonymous");
+    script.setAttribute("async","");
+    cm.appendChild(script);
+
+    int=self.setInterval("iFrameLoading()",200);
+}
+
+function iFrameLoading(){
+    var utterances=document.getElementsByClassName('utterances');
+    if(utterances.length==1){
+        if(utterances[0].style.height!=""){
+            utterancesLoad=1;
+            int=window.clearInterval(int);
+            document.getElementById("cmButton").style.display="none";
+            console.log("utterances Load OK");
+        }
+    }
+}
+
+
+
+</script>
+
+
+</html>
