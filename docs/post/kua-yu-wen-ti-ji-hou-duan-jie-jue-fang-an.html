@@ -95,7 +95,7 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
 <p>尽管SOP对通过JavaScript进行的跨源读取（如<code class="notranslate">fetch()</code>或<code class="notranslate">XMLHttpRequest</code>）非常严格，但它通常允许以下操作：</p>
 <ul>
 <li><strong>跨源写入：</strong> 例如链接、重定向和表单提交。</li>
-<li>跨源嵌入： 图像（<a target="_blank" rel="noopener noreferrer" href=""><img style="max-width: 100%; height: auto;"></a>）、样式表、脚本、iframe和视频等资源通常可以从不同源嵌入。<br>
+<li>跨源嵌入： 图像（<a target="_blank" rel="noopener noreferrer" href=""><img style="max-width: 100%;"></a>）、样式表、脚本、iframe和视频等资源通常可以从不同源嵌入。<br>
 需要注意的是，即使允许跨源嵌入，数据访问也常常会通过嵌入操作间接泄露。例如，可以读取嵌入图像的尺寸、嵌入脚本的行为或嵌入资源的可用性。这意味着即使浏览器允许嵌入（例如，来自另一个域的图像），关于该资源的微妙信息仍然可以被嵌入页面推断出来。这提示开发者，即使在看似“允许”的跨域场景中，也需要警惕潜在的侧信道攻击或信息泄露，而不仅仅是显式的数据获取。</li>
 </ul>
 <p>此外，浏览器中的数据存储机制，如Web Storage（localStorage、sessionStorage）和IndexedDB，也严格按源隔离。一个源的JavaScript无法读取或写入属于另一个源的存储。然而，Cookie的源定义略有不同，允许页面为其自身域或任何父域设置Cookie。</p>
