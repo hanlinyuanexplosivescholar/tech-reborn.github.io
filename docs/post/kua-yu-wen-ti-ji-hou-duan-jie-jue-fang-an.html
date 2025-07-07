@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html data-color-mode="light" data-dark-theme="dark" data-light-theme="light" lang="zh-CN">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
+    
+    <link rel="icon" href="https://avatars.githubusercontent.com/u/68176923?v=4"><script>
+        let theme = localStorage.getItem("meek_theme") || "light";
+        document.documentElement.setAttribute("data-color-mode", theme);
+    </script>
+<meta name="description" content="## 引言
+
+在现代高度互联的网络世界中，应用程序经常需要与来自不同域的资源进行交互。">
+<meta property="og:title" content="跨域问题及后端解决方案">
+<meta property="og:description" content="## 引言
+
+在现代高度互联的网络世界中，应用程序经常需要与来自不同域的资源进行交互。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/kua-yu-wen-ti-ji-hou-duan-jie-jue-fang-an.html">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/68176923?v=4">
+<title>跨域问题及后端解决方案</title>
+
+
+
+</head>
+<style>
+body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
+#footer {margin-top:64px; text-align: center;font-size: small;}
+
+</style>
+
+<style>
+.postTitle{margin: auto 0;font-size:40px;font-weight:bold;}
+.title-right{display:flex;margin:auto 0 0 auto;}
+.title-right .circle{padding: 14px 16px;margin-right:8px;}
+#postBody{border-bottom: 1px solid var(--color-border-default);padding-bottom:36px;}
+#postBody hr{height:2px;}
+#cmButton{height:48px;margin-top:48px;}
+#comments{margin-top:64px;}
+.g-emoji{font-size:24px;}
+@media (max-width: 600px) {
+    body {padding: 8px;}
+    .postTitle{font-size:24px;}
+}
+.copy-feedback {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 50px;
+    color: var(--color-fg-on-emphasis);
+    background-color: var(--color-fg-muted);
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 12px;
+}
+</style>
+
+
+
+
+<body>
+    <div id="header">
+<h1 class="postTitle">跨域问题及后端解决方案</h1>
+<div class="title-right">
+    <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathHome" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+    <a href="https://github.com/hanlinyuanexplosivescholar/tech-reborn.github.io/issues/8" target="_blank" class="btn btn-invisible circle" title="Issue">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathIssue" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+
+    <a class="btn btn-invisible circle" onclick="modeSwitch();" title="切换主题">
+        <svg class="octicon" width="16" height="16" >
+            <path id="themeSwitch" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+
+</div>
+</div>
+    <div id="content">
+<div class="markdown-body" id="postBody"><h2>引言</h2>
+<p>在现代高度互联的网络世界中，应用程序经常需要与来自不同域的资源进行交互。这种必要性，却与浏览器中一些基础的安全机制产生了冲突。为了解决这些所谓的“跨域问题”，跨域资源共享（CORS）作为一项标准化解决方案应运而生。它在确保安全的前提下，实现了不同源之间的通信。本报告旨在为后端开发者揭开CORS的神秘面纱，深入探讨其基本原理、运作机制以及在后端有效且安全地实现CORS的实用策略。</p>
+<h2>1. Web安全卫士：理解同源策略（SOP）</h2>
+<p>同源策略（Same-Origin Policy，SOP）是Web浏览器强制执行的一项关键安全机制。它规定，一个网页只能与来自相同“源”（由协议、主机和端口的组合定义）的资源（如脚本、数据）进行交互。这项策略是Web安全的基础。</p>
+<p>SOP在浏览器安全中扮演着至关重要的角色，它旨在防止恶意文档或脚本从一个源读取另一个源的敏感数据，例如用户的网上银行会话或公司内部网数据。如果没有SOP，一个受感染的网站将能够轻易窃取用户已登录的其他网站上的私人信息。SOP的存在直接解决了数据泄露的威胁，因此，跨域问题并非任意限制，而是必要的安全措施。</p>
+<p>尽管SOP对通过JavaScript进行的跨源读取（如<code class="notranslate">fetch()</code>或<code class="notranslate">XMLHttpRequest</code>）非常严格，但它通常允许以下操作：</p>
+<ul>
+<li><strong>跨源写入：</strong> 例如链接、重定向和表单提交。</li>
+<li>跨源嵌入： 图像（<a target="_blank" rel="noopener noreferrer" href=""><img style="max-width: 100%; height: auto;"></a>）、样式表、脚本、iframe和视频等资源通常可以从不同源嵌入。<br>
+需要注意的是，即使允许跨源嵌入，数据访问也常常会通过嵌入操作间接泄露。例如，可以读取嵌入图像的尺寸、嵌入脚本的行为或嵌入资源的可用性。这意味着即使浏览器允许嵌入（例如，来自另一个域的图像），关于该资源的微妙信息仍然可以被嵌入页面推断出来。这提示开发者，即使在看似“允许”的跨域场景中，也需要警惕潜在的侧信道攻击或信息泄露，而不仅仅是显式的数据获取。</li>
+</ul>
+<p>此外，浏览器中的数据存储机制，如Web Storage（localStorage、sessionStorage）和IndexedDB，也严格按源隔离。一个源的JavaScript无法读取或写入属于另一个源的存储。然而，Cookie的源定义略有不同，允许页面为其自身域或任何父域设置Cookie。</p>
+<h2>2. CORS基础：SOP的受控放宽</h2>
+<p>跨域资源共享（CORS）是W3C制定的一项标准，它提供了一种机制，允许Web浏览器和服务器安全地交互，以确定是否允许跨域HTTP请求。CORS作为同源策略的一种受控且明确的放宽，使得现代Web应用程序能够进行合法的跨域数据访问。</p>
+<p>CORS通过在请求和响应中添加特定的HTTP头来运作：</p>
+<ul>
+<li><strong><code class="notranslate">Origin</code>（请求头）：</strong> 由浏览器在每个CORS请求中发送，指示请求的来源域。</li>
+<li><strong><code class="notranslate">Access-Control-Allow-Origin</code>（响应头）：</strong> 由服务器发送，指示允许哪些源访问资源。它可以是特定源（例如，<code class="notranslate">https://www.example.com</code>），在有限情况下也可以是通配符（<code class="notranslate">*</code>）以允许任何源。</li>
+<li><strong><code class="notranslate">Access-Control-Allow-Methods</code>（响应头）：</strong> 用于响应预检请求，指定访问资源时允许的HTTP方法（例如，GET、POST、PUT、DELETE）。</li>
+<li><strong><code class="notranslate">Access-Control-Allow-Headers</code>（响应头）：</strong> 同样用于响应预检请求，指示实际请求中可以使用哪些HTTP头（包括自定义头，如<code class="notranslate">X-PINGOTHER</code>或<code class="notranslate">Authorization</code>）。</li>
+<li><strong><code class="notranslate">Access-Control-Max-Age</code>（响应头）：</strong> 指定浏览器可以缓存预检请求结果的时长（秒），从而减少重复预检的需要。</li>
+<li><strong><code class="notranslate">Access-Control-Allow-Credentials</code>（响应头）：</strong> 指示服务器是否允许跨域请求携带凭据（如Cookie或HTTP认证信息）。如果设置为<code class="notranslate">true</code>，则<code class="notranslate">Access-Control-Allow-Origin</code>不能为<code class="notranslate">*</code>。</li>
+</ul>
+<p>CORS请求分为“简单请求”和“预检请求”两种类型：</p>
+<ul>
+<li><strong>简单请求：</strong> 某些请求被认为是“简单请求”，不会触发<code class="notranslate">OPTIONS</code>预检请求。这些请求通常包括GET、HEAD或POST请求，且<code class="notranslate">Content-Type</code>头为特定值（<code class="notranslate">application/x-www-form-urlencoded</code>、<code class="notranslate">multipart/form-data</code>、<code class="notranslate">text/plain</code>），并且不包含自定义头。浏览器直接发送实际请求，服务器的响应必须包含适当的<code class="notranslate">Access-Control-Allow-Origin</code>头，浏览器才会允许访问响应。</li>
+<li><strong>预检请求：</strong> 对于“非简单”或“预检”请求，浏览器会首先向服务器发送一个<code class="notranslate">OPTIONS</code>请求。这个“预检”用于检查服务器是否理解CORS协议并允许实际请求。这通常发生在HTTP方法不是GET/POST（且内容类型简单）时，或者当请求中包含自定义头（如<code class="notranslate">Authorization</code>）时。如果预检请求获得批准，浏览器才会发送实际请求。</li>
+</ul>
+<p>预检请求的必要性与可能影响用户数据的HTTP请求方法紧密相关。例如，一个<code class="notranslate">DELETE</code>请求具有修改用户数据的潜在副作用，这就是为什么规范要求浏览器对这类请求进行预检。这凸显了预检并非一个任意的额外步骤，而是一个关键的安全检查，旨在确保服务器在可能造成破坏性的跨域操作发生之前明确允许这些操作。</p>
+<p>CORS与JSONP（JSON with Padding）模式形成对比，CORS被视为一种更现代、更安全的替代方案。JSONP仅支持GET请求方法，而CORS支持其他类型的HTTP请求，并允许Web开发者使用<code class="notranslate">XMLHttpRequest</code> API，提供更好的错误处理。此外，JSONP可能导致跨站脚本（XSS）问题，当外部站点被入侵时，CORS允许网站手动解析响应以确保安全。这种比较表明，Web开发正朝着更健壮、更安全的跨域通信方向发展。</p>
+<p>需要注意的是，即使是GET请求，如果包含<code class="notranslate">Content-Type</code>头（除了<code class="notranslate">application/x-www-form-urlencoded</code>、<code class="notranslate">text/plain</code>或<code class="notranslate">multipart/form-data</code>之外的任何值），或者包含<code class="notranslate">Authorization</code>等自定义头，也会触发CORS预检<code class="notranslate">OPTIONS</code>请求。这意味着大量实际的API调用都会产生预检开销，因此<code class="notranslate">Access-Control-Max-Age</code>头对于性能优化变得尤为关键。</p>
+<h2>3. CORS解决方案的后端策略</h2>
+<p>后端服务负责发送正确的CORS响应头，以允许或拒绝跨域请求。实现这一目标有几种常见的策略。</p>
+<h3>3.1 直接服务端配置</h3>
+<p>这种策略涉及配置后端应用程序，使其直接在HTTP响应中添加必要的<code class="notranslate">Access-Control-*</code>头。大多数现代Web框架（例如Express.js、Spring Boot、Flask）都提供中间件或内置功能来处理CORS配置。当请求到达时，后端会检查<code class="notranslate">Origin</code>头。如果该源被允许，它会将<code class="notranslate">Access-Control-Allow-Origin</code>（以及预检请求的其他相关头）添加到响应中。</p>
+<p>在实际应用中，对于服务多个受信任前端的应用程序，后端可以根据传入的<code class="notranslate">Origin</code>头，动态地设置<code class="notranslate">Access-Control-Allow-Origin</code>，并根据允许的源列表进行白名单验证。这对于安全性至关重要，可以避免在处理敏感数据时使用通配符<code class="notranslate">*</code>。此外，后端必须明确处理<code class="notranslate">OPTIONS</code>请求，通过响应适当的<code class="notranslate">Access-Control-Allow-Methods</code>、<code class="notranslate">Access-Control-Allow-Headers</code>和<code class="notranslate">Access-Control-Max-Age</code>头来处理预检请求。如果前端需要发送Cookie或HTTP认证等凭据，后端必须在响应中包含<code class="notranslate">Access-Control-Allow-Credentials: true</code>。关键在于，当存在此头时，<code class="notranslate">Access-Control-Allow-Origin</code>不能是<code class="notranslate">*</code>，而必须指定一个明确的源。</p>
+<h3>3.2 利用反向代理（例如Nginx）</h3>
+<p>反向代理位于后端应用程序之前。它可以配置为拦截传入请求，添加CORS头，然后将请求转发到实际的后端。从浏览器的角度来看，所有请求都似乎是向代理的源发出的，从而有效地绕过了浏览器对后端服务本身的跨域检查。Nginx、Apache或其他API网关都可以配置为添加CORS头。例如，Nginx可以使用<code class="notranslate">add_header 'Access-Control-Allow-Origin' 'your-allowed-origin';</code>指令。</p>
+<p>以下表格对比了直接后端配置和反向代理在CORS处理方面的特点：</p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>特性/方面</th>
+<th>直接后端配置</th>
+<th>反向代理（例如Nginx）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CORS处理</strong></td>
+<td>应用程序代码显式设置CORS头。</td>
+<td>代理拦截请求并添加CORS头。</td>
+</tr>
+<tr>
+<td><strong>复杂性</strong></td>
+<td>与应用程序逻辑集成；使用中间件可简化。</td>
+<td>需要单独的代理配置；增加一个层级。</td>
+</tr>
+<tr>
+<td><strong>性能</strong></td>
+<td>开销最小；预检请求仍会发生。</td>
+<td>代理开销微乎其微；预检请求仍会发生。</td>
+</tr>
+<tr>
+<td><strong>灵活性</strong></td>
+<td>对动态源逻辑高度灵活。</td>
+<td>配置驱动；对于复杂逻辑的动态性较差。</td>
+</tr>
+<tr>
+<td><strong>安全性</strong></td>
+<td>直接控制头；强白名单。</td>
+<td>可集中安全配置；可能因配置不当导致安全风险（如代理到内部网络时的SSRF）。</td>
+</tr>
+<tr>
+<td><strong>用例</strong></td>
+<td>小型应用程序，具有专用前端的微服务。</td>
+<td>集中式API网关、服务静态内容、负载均衡。</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p>尽管Nginx反向代理的开销很小，但CORS协议本身（特别是预检请求）仍可能引入额外的往返延迟，从而增加总延迟。这意味着，即使使用高性能代理，开发者也必须优化其CORS配置（例如，通过设置<code class="notranslate">Access-Control-Max-Age</code>）以减轻协议固有的开销。仅仅使用快速代理是不够的，还需要理解并优化CORS握手过程本身。</p>
+<h3>3.3 后端即前端（BFF）模式</h3>
+<p>后端即前端（Backend-For-Frontend，BFF）模式引入了一个专门为特定前端（例如，Web应用、移动应用）定制的中间后端层。这个BFF充当代理，代表前端调用各种下游微服务或API。由于BFF位于服务器端，它不受浏览器同源策略的限制。</p>
+<p>BFF模式有效地“简化”了CORS问题，因为所有来自前端的请求都发送到其专用的BFF，而BFF与前端处于同一源。然后，BFF向其他服务发出实际的（跨源）请求，由于这些是服务器到服务器的调用，它们不受CORS的约束。</p>
+<p>以下表格对比了反向代理和BFF模式在CORS处理方面的特点：</p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>特性/方面</th>
+<th>反向代理（用于CORS）</th>
+<th>后端即前端（BFF）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>主要目的</strong></td>
+<td>路由、负载均衡、SSL终止、静态内容服务，<em>然后</em>CORS。</td>
+<td>聚合、转换、客户端特定API，<em>然后</em>CORS。</td>
+</tr>
+<tr>
+<td><strong>CORS处理</strong></td>
+<td>向后端响应添加CORS头。</td>
+<td>发出服务器端请求到其他服务，完全绕过浏览器CORS。</td>
+</tr>
+<tr>
+<td><strong>复杂性</strong></td>
+<td>增加代理配置层。</td>
+<td>增加新的应用程序层，可能包含自己的数据库和逻辑。增加开发和运营开销。</td>
+</tr>
+<tr>
+<td><strong>安全性</strong></td>
+<td>集中控制CORS头。如果配置不当，可能存在SSRF风险（针对内部网络）。</td>
+<td>客户端秘密不暴露。服务器端请求绕过浏览器安全，需要强大的后端认证/授权。</td>
+</tr>
+<tr>
+<td><strong>可伸缩性</strong></td>
+<td>适用于通用流量管理。</td>
+<td>如果设计不当可能成为瓶颈；每个不同客户端需要单独的BFF。</td>
+</tr>
+<tr>
+<td><strong>用例</strong></td>
+<td>简单CORS需求，从一个域服务多个应用程序。</td>
+<td>复杂前端需求、移动应用、特定客户端体验、丰富数据聚合。</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p>BFF模式虽然解决了CORS问题，但其采用是一个更宏大的架构决策，其驱动因素不仅仅是跨域通信。它旨在优化特定客户端需求、集中数据以及通过将秘密信息保留在客户端之外来增强安全性，CORS处理只是其带来的一个有益的副作用，而非主要驱动力。</p>
+<h2>4. 安全最佳实践与常见陷阱</h2>
+<h3><code class="notranslate">Access-Control-Allow-Origin: *</code>的风险</h3>
+<p>尽管方便，但在<code class="notranslate">Access-Control-Allow-Origin</code>中使用通配符<code class="notranslate">*</code>通常存在安全风险，特别是对于处理敏感用户数据的API。它实际上告诉互联网上任何网站都可以读取您的API响应，如果与其他漏洞结合，可能导致数据泄露。通配符仅适用于真正公共、非敏感的资源，如Web字体。</p>
+<h3>安全的源白名单</h3>
+<p>始终将<code class="notranslate">Access-Control-Allow-Origin</code>配置为明确列出受信任的域。一个常见的错误是使用过于宽泛或实现不正确的正则表达式进行源验证。例如，像<code class="notranslate">^https://mail.example.com$</code>这样的正则表达式可能会被<code class="notranslate">https://mailxexample.com</code>绕过，如果点号（<code class="notranslate">.</code>）被解释为通配符。始终对白名单中的源使用绝对字符串比较，以防止此类绕过。</p>
+<h3>凭据处理（<code class="notranslate">Access-Control-Allow-Credentials</code>）</h3>
+<p>当跨域请求包含凭据（例如Cookie、HTTP认证）时，服务器必须响应<code class="notranslate">Access-Control-Allow-Credentials: true</code>。一个关键的限制是，如果设置了<code class="notranslate">Access-Control-Allow-Credentials: true</code>，则<code class="notranslate">Access-Control-Allow-Origin</code>头不能是<code class="notranslate">*</code>，而必须指定一个明确的源。这是一项严格的浏览器安全规则，旨在防止未经授权地访问已认证的用户会话。此外，需要注意，CORS响应中设置的Cookie受制于正常的第三方Cookie策略和<code class="notranslate">SameSite</code>属性规则。如果浏览器配置为拒绝所有第三方Cookie，来自不同源的Cookie可能被阻止。</p>
+<h3>CORS并非CSRF保护</h3>
+<p>这是一个关键的误解。CORS主要是一种浏览器端安全机制，旨在防止恶意跨域读取数据。它不阻止跨域写入，也不保护您的服务器免受跨站请求伪造（CSRF）攻击。为了防范CSRF，必须实施单独的服务器端措施，例如在每个请求中检查不可猜测的CSRF令牌。</p>
+<p>理解CORS保护的是客户端而非服务器是至关重要的。CORS规则由服务器设定，但由浏览器强制执行。攻击者可以通过Postman、Curl等工具轻松绕过浏览器强制执行的CORS规则，直接向服务器发送请求。这意味着后端开发者不能仅依靠CORS来保障服务器端安全。强大的认证、授权和输入验证仍然至关重要，因为攻击者可以绕过浏览器强制执行的CORS限制来发起直接请求。这种对安全性的理解，特别是与认证Cookie相关的严格CORS规则，旨在保护用户会话访问，这解释了为什么在涉及凭据时CORS要求如此严格。</p>
+<h3>调试CORS错误</h3>
+<p>出于安全原因，JavaScript无法直接访问CORS错误的详细信息；它只能知道发生了错误。为了诊断具体问题，开发者必须检查浏览器的开发者控制台以获取特定的错误消息。</p>
+<h2>结论</h2>
+<p>跨域问题是现代Web开发中不可避免的一部分，而CORS是解决这些问题的标准化且安全的方法。理解同源策略的根本安全作用，以及CORS如何作为其受控的放宽机制，对于后端开发者至关重要。无论是通过直接在后端配置CORS头，利用反向代理，还是采用后端即前端（BFF）模式，每种策略都有其独特的优势和权衡。</p>
+<p>选择合适的CORS解决方案应基于应用程序的具体需求、架构复杂性、性能考量和安全优先级。始终优先考虑明确的源白名单而非通配符，并理解CORS的局限性，特别是它不提供CSRF保护。通过遵循这些最佳实践，后端开发者可以构建安全、高效且可扩展的跨域通信系统，确保Web应用程序的顺畅运行和用户数据的安全。</p>
+<p>实战案例</p>
+<p>1/配置文件部分</p>
+<pre class="notranslate"><code class="notranslate"># 跨域配置 多选项','分割
+cors:
+  allowMethods: GET,POST,PUT,DELETE,OPTIONS
+  allowCredentials: true
+#  allowHeaders: '*'
+  allowHeaders: Content-Type,Authentication,lang,X-Requested-With,Accept-Language,Current-Url
+  exposeHeaders: REDIRECT,CONTENTPATH,redirect,contentpath
+  allowOrigin: https://legalshares-dev.ushareit.org,https://legalshares-test.ushareit.org,https://legalshares.ushareit.org
+#  allowOrigin: '*'
+
+</code></pre>
+<p>2/代码部分</p>
+<pre class="notranslate"><code class="notranslate">@Component
+@WebFilter(urlPatterns = {"/*"}, filterName = "corsFilter")
+@Order(0)
+@Slf4j
+public class CorsFilter implements Filter {
+
+    @Value("${cors.allowOrigin}")
+    private String allowOrigin;
+    @Value("${cors.allowMethods}")
+    private String allowMethods;
+    @Value("${cors.allowCredentials}")
+    private String allowCredentials;
+    @Value("${cors.allowHeaders}")
+    private String allowHeaders;
+    @Value("${cors.exposeHeaders}")
+    private String exposeHeaders;
+
+
+    private List&lt;String&gt; allowOriginList;
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        System.out.println("-------- corsFilter初始化");
+        log.info("--------" + allowOrigin);
+        log.info("--------" + allowMethods);
+        log.info("--------" + allowHeaders);
+        log.info("--------" + allowCredentials);
+        if (StringUtils.isNotEmpty(allowOrigin)) {
+            allowOriginList = Arrays.asList(allowOrigin.split(","));
+        }
+    }
+
+    @Override
+    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
+        HttpServletRequest request = (HttpServletRequest) req;
+        HttpServletResponse response = (HttpServletResponse) res;
+        if (!CollectionUtils.isEmpty(allowOriginList)) {
+            String currentOrigin = request.getHeader("Origin");
+            if (allowOriginList.contains(currentOrigin) || "*".equals(allowOrigin)) {
+                response.setHeader("Access-Control-Allow-Origin", currentOrigin);
+            }
+        }
+        if (StringUtils.isNotEmpty(allowMethods)) {
+            response.setHeader("Access-Control-Allow-Methods", allowMethods);
+        }
+        if (StringUtils.isNotEmpty(allowCredentials)) {
+            response.setHeader("Access-Control-Allow-Credentials", allowCredentials);
+        }
+        if (StringUtils.isNotEmpty(allowHeaders)) {
+            response.setHeader("Access-Control-Allow-Headers", allowHeaders);
+        }
+        if (StringUtils.isNotEmpty(exposeHeaders)) {
+            response.setHeader("Access-Control-Expose-Headers", exposeHeaders);
+        }
+        chain.doFilter(req, res);
+    }
+
+}
+
+</code></pre></div>
+<div style="font-size:small;margin-top:8px;float:right;"></div>
+
+<button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
+<div class="comments" id="comments"></div>
+
+</div>
+    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io">reborn's technical blog</a></div>
+<div id="footer2">
+    <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
+</div>
+
+<script>
+var now=new Date();
+document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+
+if(""!=""){
+    var startSite=new Date("");
+    var diff=now.getTime()-startSite.getTime();
+    var diffDay=Math.floor(diff/(1000*60*60*24));
+    document.getElementById("runday").innerHTML="网站运行"+diffDay+"天"+" • ";
+}
+</script></div>
+</body>
+<script>
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z', 'copy': 'M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z', 'check': 'M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'};
+var utterancesLoad=0;
+
+let themeSettings={
+    "dark": ["dark","moon","#00f0ff","dark-blue"],
+    "light": ["light","sun","#ff5000","github-light"],
+    "auto": ["auto","sync","","preferred-color-scheme"]
+};
+function changeTheme(mode, icon, color, utheme){
+    document.documentElement.setAttribute("data-color-mode",mode);
+    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
+    document.getElementById("themeSwitch").parentNode.style.color=color;
+    if(utterancesLoad==1){utterancesTheme(utheme);}
+}
+function modeSwitch(){
+    let currentMode=document.documentElement.getAttribute('data-color-mode');
+    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
+    localStorage.setItem("meek_theme", newMode);
+    if(themeSettings[newMode]){
+        changeTheme(...themeSettings[newMode]);
+    }
+}
+function utterancesTheme(theme){
+    const message={type:'set-theme',theme: theme};
+    const iframe=document.getElementsByClassName('utterances-frame')[0];
+    iframe.contentWindow.postMessage(message,'https://utteranc.es');
+}
+if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
+console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
+</script>
+
+<script>
+document.getElementById("pathHome").setAttribute("d",IconList["home"]);
+document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
+
+
+
+function openComments(){
+    cm=document.getElementById("comments");
+    cmButton=document.getElementById("cmButton");
+    cmButton.innerHTML="loading";
+    span=document.createElement("span");
+    span.setAttribute("class","AnimatedEllipsis");
+    cmButton.appendChild(span);
+
+    script=document.createElement("script");
+    script.setAttribute("src","https://utteranc.es/client.js");
+    script.setAttribute("repo","hanlinyuanexplosivescholar/tech-reborn.github.io");
+    script.setAttribute("issue-term","title");
+    
+    if(localStorage.getItem("meek_theme")=="dark"){script.setAttribute("theme","dark-blue");}
+    else if(localStorage.getItem("meek_theme")=="light") {script.setAttribute("theme","github-light");}
+    else{script.setAttribute("theme","preferred-color-scheme");}
+    
+    script.setAttribute("crossorigin","anonymous");
+    script.setAttribute("async","");
+    cm.appendChild(script);
+
+    int=self.setInterval("iFrameLoading()",200);
+}
+
+function iFrameLoading(){
+    var utterances=document.getElementsByClassName('utterances');
+    if(utterances.length==1){
+        if(utterances[0].style.height!=""){
+            utterancesLoad=1;
+            int=window.clearInterval(int);
+            document.getElementById("cmButton").style.display="none";
+            console.log("utterances Load OK");
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const createClipboardHTML = (codeContent, additionalClasses = '') => `
+        <pre class="notranslate"><code class="notranslate">${codeContent}</code></pre>
+        <div class="clipboard-container position-absolute right-0 top-0 ${additionalClasses}">
+            <clipboard-copy class="ClipboardButton btn m-2 p-0" role="button" style="display: inherit;">
+                <svg height="16" width="16" class="octicon octicon-copy m-2"><path d="${IconList["copy"]}"></path></svg>
+                <svg height="16" width="16" class="octicon octicon-check color-fg-success m-2 d-none"><path d="${IconList["check"]}"></path></svg>
+            </clipboard-copy>
+            <div class="copy-feedback">Copied!</div>
+        </div>
+    `;
+
+    const handleCodeElements = (selector = '') => {
+        document.querySelectorAll(selector).forEach(codeElement => {
+            const codeContent = codeElement.innerHTML;
+            const newStructure = document.createElement('div');
+            newStructure.className = 'snippet-clipboard-content position-relative overflow-auto';
+            newStructure.innerHTML = createClipboardHTML(codeContent);
+
+            const parentElement = codeElement.parentElement;
+            if (selector.includes('highlight')) {
+                parentElement.insertBefore(newStructure, codeElement.nextSibling);
+                parentElement.removeChild(codeElement);
+            } else {
+                parentElement.parentElement.replaceChild(newStructure, parentElement);
+            }
+        });
+    };
+
+    handleCodeElements('pre.notranslate > code.notranslate');
+    handleCodeElements('div.highlight > pre.notranslate');
+
+    let currentFeedback = null;
+    document.querySelectorAll('clipboard-copy').forEach(copyButton => {
+        copyButton.addEventListener('click', () => {
+            const codeContent = copyButton.closest('.snippet-clipboard-content').innerText;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = codeContent;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            const copyIcon = copyButton.querySelector('.octicon-copy');
+            const checkIcon = copyButton.querySelector('.octicon-check');
+            const copyFeedback = copyButton.nextElementSibling;
+
+            if (currentFeedback && currentFeedback !== copyFeedback) {currentFeedback.style.display = 'none';}
+            currentFeedback = copyFeedback;
+
+            copyIcon.classList.add('d-none');
+            checkIcon.classList.remove('d-none');
+            copyFeedback.style.display = 'block';
+            copyButton.style.borderColor = 'var(--color-success-fg)';
+
+            setTimeout(() => {
+                copyIcon.classList.remove('d-none');
+                checkIcon.classList.add('d-none');
+                copyFeedback.style.display = 'none';
+                copyButton.style.borderColor = '';
+            }, 2000);
+        });
+    });
+});
+
+</script>
+
+
+</html>
