@@ -10,9 +10,11 @@
         let theme = localStorage.getItem("meek_theme") || "light";
         document.documentElement.setAttribute("data-color-mode", theme);
     </script>
-<meta name="description" content="![Image](https://github.com/user-attachments/assets/e43fbbb3-0ee9-48c0-bd91-fb5e0efeabd0)。">
+<meta name="description" content="SSO 的核心原理
+SSO 的核心在于信任关系。">
 <meta property="og:title" content="Single Sign-on(SSO) 流程概览">
-<meta property="og:description" content="![Image](https://github.com/user-attachments/assets/e43fbbb3-0ee9-48c0-bd91-fb5e0efeabd0)。">
+<meta property="og:description" content="SSO 的核心原理
+SSO 的核心在于信任关系。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/Single%20Sign-on%28SSO%29%20-liu-cheng-gai-lan.html">
 <meta property="og:image" content="https://avatars.githubusercontent.com/u/68176923?v=4">
@@ -73,7 +75,22 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
 </div>
 </div>
     <div id="content">
-<div class="markdown-body" id="postBody"><p><a target="_blank" rel="noopener noreferrer" href="https://github.com/user-attachments/assets/e43fbbb3-0ee9-48c0-bd91-fb5e0efeabd0"><img src="https://github.com/user-attachments/assets/e43fbbb3-0ee9-48c0-bd91-fb5e0efeabd0" alt="Image" style="max-width: 100%;"></a></p></div>
+<div class="markdown-body" id="postBody"><p>SSO 的核心原理<br>
+SSO 的核心在于信任关系。当用户首次登录时，身份提供者（IdP，Identity Provider）会验证其身份，并颁发一个安全令牌。这个令牌证明了用户的身份。当用户尝试访问其他应用程序时，这些应用程序会与身份提供者验证这个令牌的有效性。一旦令牌被验证，应用程序就会允许用户访问，而无需再次输入凭据。</p>
+<p>SSO 的主要组成部分<br>
+1、用户（User）： 需要访问多个应用程序的个人。</p>
+<p>2、服务提供者（SP - Service Provider）： 也就是用户想要访问的各个应用程序（例如，Gmail、Slack、Salesforce等）。</p>
+<p>3、身份提供者（IdP - Identity Provider）： 负责验证用户身份并管理用户会话的中央系统。例如，Okta、Auth0、Azure AD 或者企业内部的身份认证服务器。</p>
+<p>SSO 的工作流程（简化版）<br>
+1、用户发起请求： 用户尝试访问一个受 SSO 保护的应用程序（SP）。</p>
+<p>2、重定向到 IdP： SP 检测到用户未登录，将用户重定向到 IdP 的登录页面。</p>
+<p>3、用户登录： 用户在 IdP 页面输入凭据（用户名、密码）。</p>
+<p>4、IdP 验证并颁发令牌： IdP 验证用户身份。成功后，IdP 生成一个安全令牌（通常是 SAML 断言或 JWT），并将用户重定向回 SP，同时带上这个令牌。</p>
+<p>5、SP 验证令牌： SP 接收到令牌，并与 IdP 进行通信（或使用共享密钥）来验证令牌的有效性和真实性。</p>
+<p>6、授予访问权限： 如果令牌有效，SP 认为用户已通过认证，允许用户访问应用程序，并可能为用户创建一个本地会话。</p>
+<p>7、无缝访问： 此后，当用户访问其他集成了相同 IdP 的 SP 时，由于 IdP 已经知道用户已登录，它会直接颁发令牌，用户无需再次输入密码即可直接访问。</p>
+<p>附1:流程图<br>
+<a target="_blank" rel="noopener noreferrer" href="https://github.com/user-attachments/assets/e43fbbb3-0ee9-48c0-bd91-fb5e0efeabd0"><img src="https://github.com/user-attachments/assets/e43fbbb3-0ee9-48c0-bd91-fb5e0efeabd0" alt="Image" style="max-width: 100%;"></a></p></div>
 <div style="font-size:small;margin-top:8px;float:right;"></div>
 
 <button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
