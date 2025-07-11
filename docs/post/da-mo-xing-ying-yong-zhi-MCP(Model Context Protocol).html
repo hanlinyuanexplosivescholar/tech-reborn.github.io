@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html data-color-mode="light" data-dark-theme="dark" data-light-theme="light" lang="zh-CN">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
+    
+    <link rel="icon" href="https://avatars.githubusercontent.com/u/68176923?v=4"><script>
+        let theme = localStorage.getItem("meek_theme") || "light";
+        document.documentElement.setAttribute("data-color-mode", theme);
+    </script>
+<meta name="description" content="## 1. 什么是模型上下文协议 (MCP)？
+
+### 定义与核心目的
+
+模型上下文协议 (MCP) 是一个开放标准、开源框架，由 Anthropic 于 2024 年 11 月推出。">
+<meta property="og:title" content="大模型应用之MCP(Model Context Protocol)">
+<meta property="og:description" content="## 1. 什么是模型上下文协议 (MCP)？
+
+### 定义与核心目的
+
+模型上下文协议 (MCP) 是一个开放标准、开源框架，由 Anthropic 于 2024 年 11 月推出。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/da-mo-xing-ying-yong-zhi-MCP%28Model%20Context%20Protocol%29.html">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/68176923?v=4">
+<title>大模型应用之MCP(Model Context Protocol)</title>
+
+
+
+</head>
+<style>
+body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
+#footer {margin-top:64px; text-align: center;font-size: small;}
+
+</style>
+
+<style>
+.postTitle{margin: auto 0;font-size:40px;font-weight:bold;}
+.title-right{display:flex;margin:auto 0 0 auto;}
+.title-right .circle{padding: 14px 16px;margin-right:8px;}
+#postBody{border-bottom: 1px solid var(--color-border-default);padding-bottom:36px;}
+#postBody hr{height:2px;}
+#cmButton{height:48px;margin-top:48px;}
+#comments{margin-top:64px;}
+.g-emoji{font-size:24px;}
+@media (max-width: 600px) {
+    body {padding: 8px;}
+    .postTitle{font-size:24px;}
+}
+
+</style>
+
+
+
+
+<body>
+    <div id="header">
+<h1 class="postTitle">大模型应用之MCP(Model Context Protocol)</h1>
+<div class="title-right">
+    <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathHome" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+    <a href="https://github.com/hanlinyuanexplosivescholar/tech-reborn.github.io/issues/20" target="_blank" class="btn btn-invisible circle" title="Issue">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathIssue" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+
+    <a class="btn btn-invisible circle" onclick="modeSwitch();" title="切换主题">
+        <svg class="octicon" width="16" height="16" >
+            <path id="themeSwitch" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+
+</div>
+</div>
+    <div id="content">
+<div class="markdown-body" id="postBody"><h2>1. 什么是模型上下文协议 (MCP)？</h2>
+<h3>定义与核心目的</h3>
+<p>模型上下文协议 (MCP) 是一个开放标准、开源框架，由 Anthropic 于 2024 年 11 月推出。其主要目标是标准化人工智能系统（特别是大型语言模型 (LLM) 和 AI 智能体）与外部工具、系统和数据源集成和共享数据的方式。MCP 为 AI 提供了读取文件、执行函数和处理上下文提示的“通用接口”。</p>
+<h3>理解 MCP 的类比</h3>
+<p>为了帮助计算机专家理解 MCP 的本质，可以将其与熟悉的软件概念进行类比。MCP 在某种程度上类似于应用程序编程接口 (API) 的工作方式，它为计算机程序提供了一种有文档记录、标准化的方式来集成来自外部源的服务。这就像为 AI 智能体提供一个“电话号码”，以便它们能够获取执行任务所需的信息。</p>
+<p>更重要的是，MCP 的灵感来源于语言服务器协议 (LSP)。LSP 标准化了开发工具与编程语言的交互方式，而 MCP 的目标是在 AI 领域实现类似的通用互操作性。这种类比不仅有助于理解，更揭示了 MCP 的战略抱负。LSP 通过为 IDE 中的语言功能提供单一标准，彻底改变了开发者工具。同样，MCP 旨在成为 AI 应用程序的“通用遥控器”，抽象化与各种外部系统集成的复杂性。这意味着未来 AI 模型可以动态发现并与任何暴露 MCP 接口的工具或数据源进行交互，从而促进一个像网络依赖标准化协议一样广泛且互联的 AI 生态系统。</p>
+<h3>起源与快速采纳</h3>
+<p>MCP 由 AI 公司 Anthropic 开发，并随后开源。自 2024 年底开源以来，MCP 迅速成为行业标准，促进了 AI 智能体的更广泛使用。包括 OpenAI 和 Google DeepMind（Google DeepMind 首席执行官 Demis Hassabis 于 2025 年 4 月证实 Gemini 模型将支持 MCP）在内的主要 AI 提供商以及 Zed 和 Sourcegraph 等工具制造商都已采纳或表示支持 MCP。</p>
+<p>MCP 的开源性质与行业巨头的快速采纳相结合，形成了一个强大的组合。这表明 Anthropic 成功识别了一个关键痛点，并提供了一个健壮、可扩展的解决方案。开源模式鼓励社区贡献，从而形成一个多元化的客户端和服务器生态系统。这种去中心化的开发，尽管带来了安全挑战（将在后续讨论），但也推动了更快的创新和更广泛的应用，使 MCP 成为一个真正的社区驱动标准，而非专有标准。</p>
+<h2>2. 超越训练数据：MCP 如何赋能 AI 智能体</h2>
+<h3>超越训练限制</h3>
+<p>MCP 本质上允许 AI 程序超越其训练数据。这是一个根本性的转变，因为 LLM 通常仅限于其训练阶段所嵌入的知识。MCP 使 AI 能够将新的、实时和外部信息源整合到其决策和内容生成中。</p>
+<h3>连接到“外部世界”</h3>
+<p>AI 智能体是构建在 LLM 之上的 AI 程序，它们利用 LLM 的信息处理能力来获取数据、做出决策并代表人类用户采取行动。MCP 帮助这些 AI 智能体连接到“外部世界”——即 LLM 训练数据之外的领域。这种连接允许 AI 智能体动态访问和利用来自各种外部工具和数据源的信息，包括内容存储库、业务管理工具和开发环境。</p>
+<h3>与传统 API 调用的区别</h3>
+<p>与可能在交互之间丢失上下文的标准 API 调用不同，MCP 提供了一种结构化方法来维护对话历史和上下文。在 MCP 出现之前，开发者必须手动定义接口、管理身份验证并处理每个服务的执行逻辑，并且函数调用机制在不同平台之间差异很大。MCP 标准化了这一过程，消除了 LLM 与其他应用程序之间定制集成的需要。它提供了一种通用、即插即用的格式，使任何 AI 应用程序都可以使用任何工具。</p>
+<p>这种“超越训练”的能力是一种范式转变。传统的 LLM 是基于大量数据集的强大模式匹配器。MCP 将它们转化为动态的、适应性强的“智能体”。通过为外部信息提供一个“电话号码”，MCP 允许 AI 执行需要实时数据（例如，当前餐厅可用性）、执行操作（例如，进行预订）以及维护持久上下文的任务。这使得 AI 从一个复杂的知识库转变为问题解决的积极参与者，能够持续学习和适应。</p>
+<h3>在智能体 AI 中的作用</h3>
+<p>MCP 对于 AI 智能体的开发和广泛使用至关重要。它支持“智能体 AI”：能够自主追求目标并采取行动的智能程序。MCP 允许 AI 智能体根据任务上下文自主发现、选择和编排工具，从而简化了复杂的工作流程。这对于多工具智能体工作流至关重要，它允许 AI 系统协调多个工具（例如，将文档查找与消息 API 结合）以支持跨分布式资源的高级链式思考推理。</p>
+<h2>3. 互操作性架构：MCP 的内部工作原理</h2>
+<h3>客户端-服务器架构</h3>
+<p>MCP 采用客户端-服务器架构，部分灵感来源于语言服务器协议 (LSP)。</p>
+<ul>
+<li>​<strong>宿主应用程序</strong>​：这些是与用户交互并启动连接的大型语言模型 (LLM) 应用程序（例如，Claude Desktop、AI 增强型集成开发环境 (IDE)、基于网络的 LLM 聊天界面）。</li>
+<li>​<strong>MCP 客户端</strong>​：此组件集成在宿主应用程序内部，负责管理与 MCP 服务器的连接。它在宿主应用程序的需求和 MCP 之间进行转换。</li>
+<li>​<strong>MCP 服务器</strong>​：这些是后端服务，通过 MCP 向 AI 应用程序暴露特定功能，从而增加上下文和能力。每个独立服务器通常专注于一个特定的集成点（例如，用于存储库访问的 GitHub，用于数据库操作的 PostgreSQL）。</li>
+</ul>
+<h3>传输层</h3>
+<p>传输层是客户端和服务器之间的通信机制。它支持两种主要方法：</p>
+<ul>
+<li>​**STDIO (标准输入/输出)**​：主要用于服务器与客户端在同一环境中运行的本地集成。</li>
+<li>​**HTTP+SSE (服务器发送事件)**​：用于远程连接，其中 HTTP 处理客户端请求，SSE 管理服务器响应和流式传输。</li>
+</ul>
+<h3>通信骨干：JSON-RPC 2.0</h3>
+<p>MCP 内的所有通信均基于 JSON-RPC 2.0，作为底层消息标准。JSON-RPC 是一种轻量级、基于文本的远程过程调用 (RPC) 协议，非常适合 AI 工作流中所需的快速动态交换。消息遵循可预测的模式：请求包含 <code class="notranslate">method</code>（要执行的操作）、<code class="notranslate">params</code>（输入数据）和 <code class="notranslate">id</code>（用于跟踪响应的唯一标识符）；响应包含 <code class="notranslate">result</code> 或 <code class="notranslate">error</code>。MCP 通过定义自定义错误代码或元数据来扩展 JSON-RPC。</p>
+<p>JSON-RPC 本质上是无状态的，专注于方法调用和响应。然而，MCP 的目标是“跨多个 AI 模型交互的持久上下文管理”和“有状态连接”。这产生了一种有趣的架构张力。该协议通过 MCP 服务器外部管理状态，这些服务器存储和管理会话上下文。这种设计选择将复杂的状体管理从 LLM 本身卸载，允许 LLM 在与有状态外部服务交互时保持无状态。这是分布式 AI 系统中可扩展性和模块化的关键设计模式，但它也带来了与“有状态协议设计”和多步骤工作流中一致性相关的挑战。</p>
+<h3>关键组件和功能（服务器-客户端能力）</h3>
+<ul>
+<li>​<strong>资源</strong>​：用户或 AI 模型可以使用的上下文和数据。</li>
+<li>​<strong>提示</strong>​：用于用户的模板化消息和工作流。</li>
+<li>​<strong>工具</strong>​：AI 模型要执行的函数，具有定义的模式、参数和返回值。</li>
+<li>​<strong>采样</strong>​：服务器启动的智能体行为和递归 LLM 交互。这是客户端向服务器提供的一项功能。</li>
+<li>其他实用程序包括配置、进度跟踪、取消、错误报告和日志记录。</li>
+</ul>
+<p>JSON-RPC 2.0 的选择以及对 LSP 的借鉴表明，这是一项战略性设计决策，旨在通过利用现有软件开发模式来加速采纳，而不是发明全新的通信方法。这优先考虑了简单性、可扩展性和开发者熟悉度。JSON-RPC 和 LSP 都是软件开发领域成熟且广泛采用的协议。JSON-RPC 以其在远程过程调用中的简单性和效率而闻名，而 LSP 则彻底改变了 IDE 与编程语言之间的互操作性。通过建立在这些现有且经过验证的范式之上，Anthropic 和 MCP 社区降低了开发者的学习曲线。他们提供了一个熟悉的结构，而不是要求为 AI-工具通信建立一个全新的思维模型。这降低了进入壁垒，加速了生态系统的发展。这种设计理念表明了标准化 AI 交互的务实方法。这意味着目标不仅是定义一个协议，而且是使其易于采纳并集成到现有开发工作流中。这一战略选择对于 MCP 迅速成为行业标准至关重要，因为它利用了大量熟悉这些模式的开发者，促进了广泛的实施和创新。</p>
+<h2>4. 解决集成噩梦：MCP 解决的问题</h2>
+<h3>碎片化集成的“N×M 噩梦”</h3>
+<p>在 MCP 出现之前，将 AI 模型与各种外部数据源（例如，客户关系管理 (CRM)、知识库、票务系统）集成，通常意味着为每个 AI 模型和数据源组合构建定制的、一次性的集成。这种“N×M 数据集成问题”导致了大量定制代码、脆弱的集成以及可扩展性的噩梦。开发者花费大量时间使模型与数据库、API 或其他服务协同工作，通常需要为每个集成编写大量样板代码。</p>
+<h3>上下文处理不一致</h3>
+<p>AI 模型需要特定的上下文（用户行为、历史数据、产品信息）才能智能地响应。如果没有标准化协议，开发者通常会硬编码上下文处理逻辑，导致系统脆弱，一旦数据源发生变化就会崩溃。这导致“AI 管道中上下文不一致或不完整”。MCP 标准化了上下文的定义、传递和验证方式，确保 AI 无论数据源如何，都能以正确的格式接收到正确的信息。</p>
+<h3>缺乏标准化通信</h3>
+<p>当不同团队（数据科学家、后端工程师、MLOps 专家）在一个 AI 项目上工作时，关于上下文处理的沟通不畅可能导致重大延迟和难以察觉的错误。MCP 通过以机器可读的格式记录上下文需求来缓解这一问题，确保所有团队都遵循相同的规范。</p>
+<h3>采纳 MCP 的主要优势</h3>
+<ul>
+<li>​<strong>简化集成</strong>​：提供通用协议，消除了对每个数据集进行定制集成的需要，从而减少了开发时间和复杂性。</li>
+<li>​<strong>增强的可组合性和模块化</strong>​：促进基于组件的架构，允许组件互换，从而增强灵活性和可扩展性。</li>
+<li>​<strong>加速开发和维护</strong>​：减少冗余编码任务并简化维护，因为更新可以普遍应用。</li>
+<li>​<strong>面向未来和可扩展性</strong>​：灵活的框架适应新兴技术，支持可扩展的架构。</li>
+<li>​<strong>增强性能和效率</strong>​：促进直接数据访问，减少延迟并优化资源利用率。</li>
+</ul>
+<p>“N×M 噩梦”是一个经典的软件工程问题，MCP 通过充当通用适配器来解决它。这代表着一个重要的架构抽象，将脆弱的定制集成转变为模块化、可扩展的生态系统，这对于 AI 应用程序的工业化至关重要。MCP 通过引入 AI 模型和外部工具之间的标准化协议层，有效地将它们解耦。这种模块化意味着 AI 模型可以独立于工具发展，并且可以添加新工具而无需更改每个 AI 应用程序。这促进了一个高度可扩展和适应性强的 AI 生态系统，减少了开发时间和维护开销。这是从紧密耦合的集成到更松散耦合、面向服务的 AI 方法的重大架构转变。</p>
+<h3>表 1：MCP 与传统 API 集成对比</h3>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>标准</th>
+<th>MCP</th>
+<th>传统 API 集成</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>灵活性</td>
+<td>动态、标准化的通信</td>
+<td>定制、僵硬的连接</td>
+</tr>
+<tr>
+<td>工具发现</td>
+<td>工具的自动发现</td>
+<td>需要手动设置</td>
+</tr>
+<tr>
+<td>上下文管理</td>
+<td>跨交互跟踪状态</td>
+<td>每个 API 调用都是独立的</td>
+</tr>
+<tr>
+<td>集成便捷性</td>
+<td>统一协议减少开发时间</td>
+<td>每个集成都是单独构建的</td>
+</tr>
+<tr>
+<td>安全性</td>
+<td>内置身份验证和访问控制（协议层面，但依赖实现）</td>
+<td>安全措施因 API 而异</td>
+</tr>
+<tr>
+<td>可扩展性</td>
+<td>动态扩展，最小化重新配置</td>
+<td>扩展需要额外工作</td>
+</tr>
+<tr>
+<td>维护</td>
+<td>标准化框架简化更新</td>
+<td>定制集成需要持续维护</td>
+</tr>
+<tr>
+<td>开发者体验</td>
+<td>减少集成复杂性</td>
+<td>碎片化解决方案减缓开发</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p>附1：官方文档地址<br>
+<a href="https://modelcontextprotocol.io/introduction" rel="nofollow">https://modelcontextprotocol.io/introduction</a></p></div>
+<div style="font-size:small;margin-top:8px;float:right;"></div>
+
+<button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
+<div class="comments" id="comments"></div>
+
+</div>
+    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io">reborn's technical blog</a></div>
+<div id="footer2">
+    <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
+</div>
+
+<script>
+var now=new Date();
+document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+
+if(""!=""){
+    var startSite=new Date("");
+    var diff=now.getTime()-startSite.getTime();
+    var diffDay=Math.floor(diff/(1000*60*60*24));
+    document.getElementById("runday").innerHTML="网站运行"+diffDay+"天"+" • ";
+}
+</script></div>
+</body>
+<script>
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z'};
+var utterancesLoad=0;
+
+let themeSettings={
+    "dark": ["dark","moon","#00f0ff","dark-blue"],
+    "light": ["light","sun","#ff5000","github-light"],
+    "auto": ["auto","sync","","preferred-color-scheme"]
+};
+function changeTheme(mode, icon, color, utheme){
+    document.documentElement.setAttribute("data-color-mode",mode);
+    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
+    document.getElementById("themeSwitch").parentNode.style.color=color;
+    if(utterancesLoad==1){utterancesTheme(utheme);}
+}
+function modeSwitch(){
+    let currentMode=document.documentElement.getAttribute('data-color-mode');
+    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
+    localStorage.setItem("meek_theme", newMode);
+    if(themeSettings[newMode]){
+        changeTheme(...themeSettings[newMode]);
+    }
+}
+function utterancesTheme(theme){
+    const message={type:'set-theme',theme: theme};
+    const iframe=document.getElementsByClassName('utterances-frame')[0];
+    iframe.contentWindow.postMessage(message,'https://utteranc.es');
+}
+if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
+console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
+</script>
+
+<script>
+document.getElementById("pathHome").setAttribute("d",IconList["home"]);
+document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
+
+
+
+function openComments(){
+    cm=document.getElementById("comments");
+    cmButton=document.getElementById("cmButton");
+    cmButton.innerHTML="loading";
+    span=document.createElement("span");
+    span.setAttribute("class","AnimatedEllipsis");
+    cmButton.appendChild(span);
+
+    script=document.createElement("script");
+    script.setAttribute("src","https://utteranc.es/client.js");
+    script.setAttribute("repo","hanlinyuanexplosivescholar/tech-reborn.github.io");
+    script.setAttribute("issue-term","title");
+    
+    if(localStorage.getItem("meek_theme")=="dark"){script.setAttribute("theme","dark-blue");}
+    else if(localStorage.getItem("meek_theme")=="light") {script.setAttribute("theme","github-light");}
+    else{script.setAttribute("theme","preferred-color-scheme");}
+    
+    script.setAttribute("crossorigin","anonymous");
+    script.setAttribute("async","");
+    cm.appendChild(script);
+
+    int=self.setInterval("iFrameLoading()",200);
+}
+
+function iFrameLoading(){
+    var utterances=document.getElementsByClassName('utterances');
+    if(utterances.length==1){
+        if(utterances[0].style.height!=""){
+            utterancesLoad=1;
+            int=window.clearInterval(int);
+            document.getElementById("cmButton").style.display="none";
+            console.log("utterances Load OK");
+        }
+    }
+}
+
+
+
+</script>
+
+
+</html>
