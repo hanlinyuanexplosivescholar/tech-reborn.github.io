@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html data-color-mode="light" data-dark-theme="dark" data-light-theme="light" lang="zh-CN">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
+    
+    <link rel="icon" href="https://avatars.githubusercontent.com/u/68176923?v=4"><script>
+        let theme = localStorage.getItem("meek_theme") || "light";
+        document.documentElement.setAttribute("data-color-mode", theme);
+    </script>
+<meta name="description" content="## 引言：Kafka为何能“快”人一步？
+
+Apache Kafka是一个开源的、分布式的事件流平台，专为处理实时数据而设计。">
+<meta property="og:title" content="深入解析：Kafka高性能的秘密武器   --《深入理解Kafka核心设计与实现原理》">
+<meta property="og:description" content="## 引言：Kafka为何能“快”人一步？
+
+Apache Kafka是一个开源的、分布式的事件流平台，专为处理实时数据而设计。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/shen-ru-jie-xi-%EF%BC%9AKafka-gao-xing-neng-de-mi-mi-wu-qi-%20%20%20--%E3%80%8A-shen-ru-li-jie-Kafka-he-xin-she-ji-yu-shi-xian-yuan-li-%E3%80%8B.html">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/68176923?v=4">
+<title>深入解析：Kafka高性能的秘密武器   --《深入理解Kafka核心设计与实现原理》</title>
+
+
+
+</head>
+<style>
+body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
+#footer {margin-top:64px; text-align: center;font-size: small;}
+
+</style>
+
+<style>
+.postTitle{margin: auto 0;font-size:40px;font-weight:bold;}
+.title-right{display:flex;margin:auto 0 0 auto;}
+.title-right .circle{padding: 14px 16px;margin-right:8px;}
+#postBody{border-bottom: 1px solid var(--color-border-default);padding-bottom:36px;}
+#postBody hr{height:2px;}
+#cmButton{height:48px;margin-top:48px;}
+#comments{margin-top:64px;}
+.g-emoji{font-size:24px;}
+@media (max-width: 600px) {
+    body {padding: 8px;}
+    .postTitle{font-size:24px;}
+}
+
+</style>
+
+
+
+
+<body>
+    <div id="header">
+<h1 class="postTitle">深入解析：Kafka高性能的秘密武器   --《深入理解Kafka核心设计与实现原理》</h1>
+<div class="title-right">
+    <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathHome" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+    <a href="https://github.com/hanlinyuanexplosivescholar/tech-reborn.github.io/issues/10" target="_blank" class="btn btn-invisible circle" title="Issue">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathIssue" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+
+    <a class="btn btn-invisible circle" onclick="modeSwitch();" title="切换主题">
+        <svg class="octicon" width="16" height="16" >
+            <path id="themeSwitch" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+
+</div>
+</div>
+    <div id="content">
+<div class="markdown-body" id="postBody"><h2>引言：Kafka为何能“快”人一步？</h2>
+<p>Apache Kafka是一个开源的、分布式的事件流平台，专为处理实时数据而设计。它在支持事件驱动应用和构建可靠数据管道方面表现卓越，能够提供低延迟和高吞吐量的数据交付能力。Kafka已发展成为业界广泛使用的事件流平台，每天能够摄取和处理数万亿条记录，而不会出现明显的性能滞后，足以支持海量数据的可扩展性需求。</p>
+<p>与传统消息队列不同，Kafka最显著的特点之一是它会保留消息一段可配置的时间，从而允许多个消费者独立读取相同的数据，而消息并不会在消费后立即删除。这一特性使得Kafka成为消息传递、事件溯源、流处理和构建实时数据管道的理想选择。从核心能力来看，Kafka使应用程序能够发布或订阅数据或事件流；以发生顺序准确存储记录，提供容错和持久存储；并且能够实时处理这些记录。</p>
+<p>在现代数据架构中，高性能是Kafka不可或缺的关键所在。Kafka的生产者和消费者之间是完全解耦的，彼此互不感知，这是其实现高可伸缩性的关键设计元素。例如，生产者从不需要等待消费者，可以持续以最大速率发送数据。这种设计理念，使得Kafka的“快”不仅仅体现在简单的速度上，更在于其在分布式环境下，通过生产者与消费者的独立运作，实现了卓越的吞吐量、极低的延迟以及强大的可扩展性。这种架构使其在对数据量处理速度和可靠性极高要求的行业中，如金融、电子商务、电信和交通等，成为处理海量实时数据的基石。它能够支持企业在面对瞬息万变的市场需求时，依然保持数据流的敏捷与稳定。</p>
+<p>为了帮助读者快速理解Kafka高性能的奥秘，以下表格总结了其核心原理：</p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>原理名称</th>
+<th>核心思想</th>
+<th>性能贡献</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>追加写入日志</td>
+<td>磁盘顺序I/O，数据不可变</td>
+<td>极高写入吞吐量，简化数据管理与复制</td>
+</tr>
+<tr>
+<td>分区机制</td>
+<td>数据分片，并行处理，多Broker承载</td>
+<td>横向扩展能力，负载均衡，提升并发处理能力</td>
+</tr>
+<tr>
+<td>零拷贝技术</td>
+<td>减少CPU数据拷贝和上下文切换</td>
+<td>显著降低CPU开销，提高数据传输效率和吞吐量</td>
+</tr>
+<tr>
+<td>批量处理</td>
+<td>生产者批量发送消息</td>
+<td>减少网络请求次数，提高网络利用率，提升吞吐量</td>
+</tr>
+<tr>
+<td>消息压缩</td>
+<td>减少消息体大小</td>
+<td>降低网络带宽消耗，减少磁盘存储空间</td>
+</tr>
+<tr>
+<td>拉取模式</td>
+<td>消费者按需拉取数据，自主控制消费速率</td>
+<td>避免消费者过载，支持高效批处理，提高系统韧性</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<h2>基石：追加写入与分区设计</h2>
+<h3>顺序I/O的魔力</h3>
+<p>Kafka的核心架构围绕其分布式、追加写入的日志实现。这些日志并非传统意义上的应用日志文件，而是分布在集群中多个服务器上的不可变数据结构。Kafka的提交日志特性意味着记录以严格的顺序追加到日志末尾。这种追加写入设计带来了诸多好处，其中最主要的是实现了极高的吞吐量，因为顺序磁盘操作远快于随机访问模式。</p>
+<p>消息一旦写入主题，就不可更改。这种不可变性是Kafka实现高可靠性和简化分布式系统设计的关键。在传统的数据库系统中，数据的修改通常涉及到复杂的并发控制机制，例如行锁或多版本并发控制（MVCC），以防止脏读、不可重复读等问题。这些机制虽然能保证数据一致性，但也引入了额外的开销和复杂性。而Kafka通过采用数据不可变性，巧妙地规避了这些复杂的并发控制挑战。当数据被“冻结”后，消费者和副本同步的逻辑变得极其简单：副本只需按照顺序复制相同的不可变记录，从而确保了高效且无冲突的数据同步。这种设计从根本上牺牲了原地修改历史数据的能力，换取了极致的写入性能和简化的并发控制模型。</p>
+<h3>横向扩展的利器：分区机制</h3>
+<p>Kafka的主题（Topic）并非一个单一的逻辑实体，而是被划分为多个分区（Partition）。每个分区本质上是一个独立的、追加写入的有序日志文件，它承载着主题数据的一个子集。在创建主题时，用户需要指定所需的分区数量，这些分区从0开始编号。当新的事件写入主题时，它们会被追加到其中一个分区中。</p>
+<p>增加分区的主要好处是显著提高了系统的可扩展性。每个分区都可以托管在不同的Broker（Kafka服务器）上。这意味着一个逻辑上的主题能够跨越多个物理服务器进行水平扩展，从而处理远超单个服务器能力的数据量。生产者可以使用键（Key）来将消息路由到特定分区，确保具有相同键的消息始终进入同一分区并保持在该分区内的严格顺序。这对于需要保证特定业务实体（如某个用户的所有操作或某个订单的所有状态变更）消息顺序性的场景至关重要。如果消息没有键，则会以轮询方式均匀分布到分区中，以确保数据在所有分区中均匀分配，实现负载均衡。</p>
+<p>这种分区机制是Kafka实现“无限”横向扩展的基石。通过将逻辑上的数据流分解为物理上独立且可并行处理的单元，Kafka将单机顺序写入的性能优势推广到整个集群。这意味着集群的整体吞吐量可以随着分区和Broker数量的增加而线性增长，从而能够处理PB级甚至更高量级的数据流。这种横向扩展能力，结合了Key路由在特定业务场景下保证消息顺序性的能力，使得Kafka在兼顾了极致性能的同时，也满足了复杂的业务需求。</p>
+<h3>高可用与容错：副本机制 (Leader/Follower)</h3>
+<p>为了确保数据的可靠性和系统的持续可用性，Kafka的分区通过复制（Replication）机制实现了高可用性。Kafka主题可以设置一个大于1的复制因子，这个因子决定了有多少个Broker会存储主题数据的副本。被复制的分区会被分配给其他Broker，这些Broker被称为该分区的Follower。</p>
+<p>在Kafka集群中，一个Broker会作为给定主题分区的Leader，负责处理该分区的所有读写请求。而Follower则从Leader复制数据，保持与Leader的同步。这种复制机制提供了消息的冗余，即使某个Leader Broker发生故障，其中一个Follower也可以自动且迅速地接管Leader职责，从而确保数据的持续可用性并防止数据丢失。这种故障转移机制使得Kafka具有强大的容错能力。</p>
+<p>副本机制不仅提供了数据冗余和高可用性，它与分区机制的结合，确保了在分布式环境下，即使部分节点失效，Kafka也能持续提供服务，且数据不丢失。虽然数据复制会带来一定的开销，但这种机制确保了Kafka在实现高吞吐量和低延迟的同时，能够持续可靠地运行。对于金融机构等对数据可靠性和系统可用性有极高要求的场景，这种设计至关重要，因为再高的性能，如果系统不可用，其价值也将大打折扣。Leader/Follower模型也简化了分区内部的一致性：所有写入都只发生在Leader上，Follower只需被动复制，从而在不引入复杂分布式共识协议的情况下，保证了分区内部的严格顺序性。</p>
+<h2>加速器：零拷贝技术</h2>
+<h3>传统数据传输的瓶颈</h3>
+<p>在传统的操作系统中，数据从磁盘文件传输到网络通常涉及一个复杂且低效的过程。这个过程通常需要4次数据拷贝和4次上下文切换。具体来说，数据首先从磁盘拷贝到内核缓冲区，然后从内核缓冲区拷贝到应用缓冲区，接着从应用缓冲区拷贝到Socket缓冲区，最后从Socket缓冲区拷贝到网络接口卡（NIC）的缓冲区。</p>
+<p>在这个过程中，CPU扮演了中间人的角色，频繁地在用户态和内核态之间进行数据拷贝和上下文切换。每次用户态和内核态的切换都会带来显著的性能开销，而冗余的数据拷贝则消耗了大量的CPU计算资源。对于像Kafka这样需要处理海量数据流的系统来说，这种传统的传输模式会成为一个严重的性能瓶颈。</p>
+<h3>零拷贝的原理与效益</h3>
+<p>为了克服传统数据传输的瓶颈，Kafka采用了零拷贝（Zero Copy）技术。零拷贝是一种消除CPU不必要数据拷贝的技术。在Kafka中，这项技术优化了从磁盘文件到网络的数据传输路径，通过减少冗余的数据拷贝，显著提高了传输效率。</p>
+<p>零拷贝技术的核心在于它能够将数据直接从内核页缓存传输到网络接口卡（NIC）的缓冲区，从而避免了数据在用户空间和内核空间之间的多次往返拷贝。这个过程只需要2次拷贝和2次上下文切换，相比传统方式减少了一半。</p>
+<p>零拷贝带来的性能优势显著：</p>
+<ul>
+<li><strong>减少CPU拷贝操作：</strong> 数据拷贝次数从4次减少到2次，从而大幅降低了CPU的利用率。</li>
+<li><strong>减少上下文切换：</strong> 上下文切换次数从4次减少到2次，降低了系统调用的开销。</li>
+<li><strong>增强数据传输效率：</strong> 数据直接从页缓存流向NIC，消除了中间缓冲区，使得数据传输路径更加直接和高效。</li>
+</ul>
+<p>Kafka的零拷贝实现主要依赖于Java NIO的两个关键特性：内存映射（<code class="notranslate">mmap</code>）和<code class="notranslate">sendfile</code>系统调用。<code class="notranslate">mmap</code>允许直接从用户空间访问内核空间内存，消除内核与用户空间之间的数据拷贝，这对于小文件传输特别有效。而<code class="notranslate">sendfile</code>系统调用则允许数据直接在文件描述符之间传输，这对于大文件传输更为高效，是实现零拷贝的理想选择。</p>
+<p>零拷贝是Kafka在读写路径上实现极致性能的“微观优化”。它通过绕过用户空间，直接在内核空间完成数据传输，极大地减少了CPU的负担和上下文切换的开销。这使得Kafka能够以接近硬件极限的速度进行数据传输，尤其是在Broker作为消费者端（如副本同步）或作为生产者端（如发送给消费者）时。通过将CPU从繁重的数据拷贝任务中解放出来，Kafka可以利用这些资源处理更复杂的业务逻辑或管理更多的并发连接，从而最大化了系统的整体吞吐量。这种对数据路径的精细优化，体现了Kafka在系统工程上的卓越，确保了其在大规模数据流场景下的持续高性能。</p>
+<h2>效率倍增器：批量处理与数据压缩</h2>
+<h3>批量发送的艺术</h3>
+<p>在Kafka中，生产者并非逐条发送消息，而是能够将多条消息聚合成一个批次（Batch）发送到Kafka Broker。随后，Broker可以以压缩格式将这些批次存储在磁盘上。批量处理的核心思想在于通过一次性发送多条消息，显著减少了网络请求的次数，从而摊薄了每次请求所固有的固定开销，例如TCP连接的建立、包头处理等。</p>
+<p>为了实现更高效的批量处理，Kafka提供了可配置的参数，如<code class="notranslate">linger.ms</code>（生产者等待累积更多消息的时间）和<code class="notranslate">batch.size</code>（批次的最大字节数）。通过合理调整这些参数，可以鼓励生产者形成更大的消息批次，这不仅能带来更有效的压缩效果，还能显著提升整体吞吐量。</p>
+<p>批量处理是Kafka在网络传输层面实现“规模经济”的关键。每一次网络请求，无论其携带的数据量大小，都会产生一定的固定开销。通过将零散的消息聚合成更大的单元进行传输，Kafka极大地减少了网络中传输的数据包数量，从而提升了网络带宽的有效利用率，并降低了网络接口和中间网络设备的负载。尽管<code class="notranslate">linger.ms</code>的设置可能会为单条消息引入一个微小的、可配置的延迟（因为生产者需要等待以填充批次），但从整个系统的角度来看，这种延迟换来了显著的整体吞吐量提升，这对于高容量的流处理系统来说是极其有利的权衡。此外，更大的批次通常也意味着更好的压缩效果，进一步放大了性能优势。这种设计体现了对网络效率的深刻理解，并优化了聚合吞吐量，这在大多数高容量事件流场景中通常比单个消息的超低延迟更为关键。</p>
+<h3>压缩的智慧</h3>
+<p>消息压缩是批量处理的自然延伸，它在数据传输和存储层面提供了“降维打击”。启用压缩可以显著减小消息的实际大小，从而使其发送到Kafka的速度更快，并减少在磁盘上的存储空间。</p>
+<p>压缩可以在生产者层面实现，这意味着无需修改Broker或消费者配置即可启用压缩。当然，它也可以在Broker层面进行设置。压缩通过合并消息中的重复值来提高效率。批次越大，压缩效果通常越好。例如，JSON和XML等格式的消息由于包含重复的字段名，通常能获得很好的压缩效果。</p>
+<p>消息压缩的优势主要体现在：</p>
+<ul>
+<li><strong>显著减少生产者请求大小：</strong> 消息体大小最高可减少四倍，这直接导致网络数据传输更快。</li>
+<li><strong>降低网络延迟和提升吞吐量：</strong> 效率的提升带来了更低的延迟和更高的吞吐量。</li>
+<li><strong>增强磁盘利用率：</strong> 压缩后的消息占用更少的磁盘空间，从而提升了Kafka的磁盘利用率，允许在相同存储资源下保留更多数据或更长时间。</li>
+</ul>
+<p>然而，压缩也存在一些权衡：它会增加CPU的利用率，并且可能为消息引入微小的延迟。但在现代计算环境中，这些缺点通常相对较小，并且通常被网络带宽和磁盘I/O的显著改善所抵消。<code class="notranslate">snappy</code>或<code class="notranslate">lz4</code>通常是速度和压缩比之间的推荐选择。</p>
+<p>消息压缩通过减少实际传输和存储的数据量，直接提升了网络带宽的有效利用率和磁盘的存储效率，是实现Kafka整体高性能不可或缺的一环。它与批量处理和零拷贝技术协同工作，共同构建了一个高效的数据管道。压缩减少了需要移动的数据量，批量处理优化了移动这些数据的效率，而零拷贝则确保了数据在系统内部的物理移动尽可能地快。尽管压缩和解压缩需要消耗CPU周期，但对于大多数Kafka部署而言，网络带宽和磁盘I/O通常是主要的瓶颈，因此CPU的额外开销通常会带来系统整体性能的净收益。</p>
+<h2>消费者视角：拉取模式的优势</h2>
+<h3>消费者自主控制</h3>
+<p>Kafka在消费者端采用了拉取（Pull）模式，这意味着消费者可以主动向Broker请求数据，并按照自己的节奏拉取消息。这种模式赋予了消费者对数据流的完全控制权，使其能够根据自身处理能力按需获取消息，从而有效避免被过多的数据淹没。</p>
+<p>在传统的推模式消息系统中，Broker会持续不断地将消息推送给消费者，无论消费者是否准备好处理。这可能导致慢速消费者被过载、消息在消费者端堆积，甚至引发消息丢失或系统延迟飙升。与此形成鲜明对比的是，Kafka的拉取模式能够很好地处理“背压”（Backpressure）问题。如果消费者处理速度较慢或暂时离线，Kafka Broker不会不必要地推送数据，而是等待消费者主动请求，这从根本上避免了消息丢失和不必要的重试。</p>
+<p>拉取模式是Kafka在消费者端实现“弹性与韧性”的关键。它将流量控制的权力下放给消费者，从而避免了传统推模式下消费者过载、消息堆积甚至系统崩溃的风险，确保了整个数据管道的稳定性和可靠性。这种设计理念是Kafka能够支持大规模、异构消费者群体的基础，允许不同的消费者以不同的速率和方式消费同一份数据，而不会相互干扰或影响整个系统的稳定性。</p>
+<h3>高效批处理与灵活消费</h3>
+<p>拉取模式不仅赋予了消费者自主控制权，还使得消费者能够高效地批量获取数据，进一步减少网络开销。消费者可以根据自身处理能力和网络状况，灵活控制每次拉取数据的批次大小。这种按需批量拉取的方式，优化了数据传输效率，减少了网络往返次数。</p>
+<p>为了精确跟踪消费进度，Kafka为每个消费者组维护一个偏移量（Offset），用于记录每个分区中最后处理的消息位置。消费者可以从特定的偏移量开始拉取消息，这在多种场景下都提供了极大的灵活性。这种拉取设计简化了偏移量管理，因为消费者控制着数据流，并负责向Broker提交其已处理的偏移量。</p>
+<p>拉取模式与偏移量管理机制的结合，还赋予了Kafka极高的消费灵活性和数据可追溯性。消费者可以通过“时间旅行”（seeking earlier offsets）来回溯或重新处理历史消息。这一功能在调试问题、数据恢复、重新处理历史数据以应用新的业务逻辑，或进行A/B测试时显得尤为强大。这远超传统消息队列的“即时消费即删除”模型，因为传统模式下消息一旦被消费就可能无法再次访问。</p>
+<p>消费者拉取模式与偏移量管理机制的结合，赋予了Kafka极高的消费灵活性和数据可追溯性。这不仅提升了消费效率，更在业务层面提供了强大的容错和数据恢复能力，是构建复杂实时数据应用的关键特性。它使得Kafka从一个简单的消息队列，转变为一个能够支持复杂事件驱动架构、数据湖和高级实时分析的强大数据平台。这种设计强调了对消费过程的精确控制和对历史数据的灵活访问，从而满足了现代数据密集型业务对数据处理的严苛要求。</p>
+<h2>总结：多维优化构建极致性能</h2>
+<h3>重申Kafka高性能是多项技术协同作用的结果</h3>
+<p>Kafka的卓越性能并非单一技术突破的产物，而是其在设计哲学、存储机制、网络传输和消费模型等多个维度上进行深度优化和巧妙权衡的综合体现。从最底层的磁盘顺序写入（充分利用硬件优势），到上层的分区机制与零拷贝技术（极大提升并行处理能力和数据传输效率），再到批量处理与消息压缩（优化网络利用率和存储效率），以及消费者拉取模式（实现消费端的弹性与控制），Kafka的每一个设计选择都紧密围绕着“高性能”这一核心目标。</p>
+<p>这种“系统级”的性能优化思维，而非仅仅依赖于某个单一的“银弹”技术，是Kafka能够在大规模生产环境中持续保持领先地位的根本原因。顺序写入使得单个磁盘操作极其快速；分区机制将这些快速的顺序操作分散到多台机器上，实现了聚合吞吐量的海量并行化；零拷贝技术确保了数据在高效写入或读取磁盘后，能够以最小的CPU开销传输到网络或从网络接收，从而最大化了网络吞吐量；批量处理和压缩技术则进一步减少了需要传输的数据量和网络操作次数，优化了网络和存储效率。最终，拉取模式确保了消费端能够与这种高吞吐量保持同步，而不会成为瓶颈或导致系统不稳定。Kafka的各个组件相互加强，共同解决了分布式系统中的核心瓶颈（如I/O、网络和并发控制），从而构建了一个高度优化、端到端的数据管道。</p>
+<h3>展望Kafka在实时数据处理和微服务架构中的持续价值</h3>
+<p>在微服务架构中，Kafka通过实现异步、事件驱动的消息传递，极大地促进了微服务之间的通信。这使得各个服务可以在不紧密耦合的情况下触发其他服务中的操作，从而支持可扩展和解耦的系统架构。这种松耦合的设计，提升了系统的敏捷性、可维护性和独立部署能力。此外，Kafka与云原生平台（如Docker和Kubernetes）的无缝集成，进一步支持了可扩展、容错的事件驱动通信，同时最大限度地减少了手动基础设施管理的需求。</p>
+<p>附1：推荐书籍《深入理解Kafka核心设计与实现原理》<br>
+<a target="_blank" rel="noopener noreferrer" href="https://github.com/user-attachments/assets/3f294371-2280-4fd6-b62d-b7646705afe6"><img src="https://github.com/user-attachments/assets/3f294371-2280-4fd6-b62d-b7646705afe6" alt="Image" style="max-width: 100%;"></a></p></div>
+<div style="font-size:small;margin-top:8px;float:right;"></div>
+
+<button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
+<div class="comments" id="comments"></div>
+
+</div>
+    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io">reborn's technical blog</a></div>
+<div id="footer2">
+    <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
+</div>
+
+<script>
+var now=new Date();
+document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+
+if(""!=""){
+    var startSite=new Date("");
+    var diff=now.getTime()-startSite.getTime();
+    var diffDay=Math.floor(diff/(1000*60*60*24));
+    document.getElementById("runday").innerHTML="网站运行"+diffDay+"天"+" • ";
+}
+</script></div>
+</body>
+<script>
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z'};
+var utterancesLoad=0;
+
+let themeSettings={
+    "dark": ["dark","moon","#00f0ff","dark-blue"],
+    "light": ["light","sun","#ff5000","github-light"],
+    "auto": ["auto","sync","","preferred-color-scheme"]
+};
+function changeTheme(mode, icon, color, utheme){
+    document.documentElement.setAttribute("data-color-mode",mode);
+    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
+    document.getElementById("themeSwitch").parentNode.style.color=color;
+    if(utterancesLoad==1){utterancesTheme(utheme);}
+}
+function modeSwitch(){
+    let currentMode=document.documentElement.getAttribute('data-color-mode');
+    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
+    localStorage.setItem("meek_theme", newMode);
+    if(themeSettings[newMode]){
+        changeTheme(...themeSettings[newMode]);
+    }
+}
+function utterancesTheme(theme){
+    const message={type:'set-theme',theme: theme};
+    const iframe=document.getElementsByClassName('utterances-frame')[0];
+    iframe.contentWindow.postMessage(message,'https://utteranc.es');
+}
+if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
+console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
+</script>
+
+<script>
+document.getElementById("pathHome").setAttribute("d",IconList["home"]);
+document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
+
+
+
+function openComments(){
+    cm=document.getElementById("comments");
+    cmButton=document.getElementById("cmButton");
+    cmButton.innerHTML="loading";
+    span=document.createElement("span");
+    span.setAttribute("class","AnimatedEllipsis");
+    cmButton.appendChild(span);
+
+    script=document.createElement("script");
+    script.setAttribute("src","https://utteranc.es/client.js");
+    script.setAttribute("repo","hanlinyuanexplosivescholar/tech-reborn.github.io");
+    script.setAttribute("issue-term","title");
+    
+    if(localStorage.getItem("meek_theme")=="dark"){script.setAttribute("theme","dark-blue");}
+    else if(localStorage.getItem("meek_theme")=="light") {script.setAttribute("theme","github-light");}
+    else{script.setAttribute("theme","preferred-color-scheme");}
+    
+    script.setAttribute("crossorigin","anonymous");
+    script.setAttribute("async","");
+    cm.appendChild(script);
+
+    int=self.setInterval("iFrameLoading()",200);
+}
+
+function iFrameLoading(){
+    var utterances=document.getElementsByClassName('utterances');
+    if(utterances.length==1){
+        if(utterances[0].style.height!=""){
+            utterancesLoad=1;
+            int=window.clearInterval(int);
+            document.getElementById("cmButton").style.display="none";
+            console.log("utterances Load OK");
+        }
+    }
+}
+
+
+
+</script>
+
+
+</html>
