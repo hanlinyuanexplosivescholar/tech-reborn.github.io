@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html data-color-mode="light" data-dark-theme="dark" data-light-theme="light" lang="zh-CN">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
+    
+    <link rel="icon" href="https://avatars.githubusercontent.com/u/68176923?v=4"><script>
+        let theme = localStorage.getItem("meek_theme") || "light";
+        document.documentElement.setAttribute("data-color-mode", theme);
+    </script>
+<meta name="description" content="现代应用程序的复杂性日益增加，特别是微服务和分布式系统，这使得管理共享资源需要强大的机制。">
+<meta property="og:title" content="分布式锁：Redisson   --结算中台">
+<meta property="og:description" content="现代应用程序的复杂性日益增加，特别是微服务和分布式系统，这使得管理共享资源需要强大的机制。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/fen-bu-shi-suo-%EF%BC%9ARedisson%20%20%20---jie-suan-zhong-tai.html">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/68176923?v=4">
+<title>分布式锁：Redisson   --结算中台</title>
+
+
+
+</head>
+<style>
+body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
+#footer {margin-top:64px; text-align: center;font-size: small;}
+
+</style>
+
+<style>
+.postTitle{margin: auto 0;font-size:40px;font-weight:bold;}
+.title-right{display:flex;margin:auto 0 0 auto;}
+.title-right .circle{padding: 14px 16px;margin-right:8px;}
+#postBody{border-bottom: 1px solid var(--color-border-default);padding-bottom:36px;}
+#postBody hr{height:2px;}
+#cmButton{height:48px;margin-top:48px;}
+#comments{margin-top:64px;}
+.g-emoji{font-size:24px;}
+@media (max-width: 600px) {
+    body {padding: 8px;}
+    .postTitle{font-size:24px;}
+}
+.copy-feedback {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 50px;
+    color: var(--color-fg-on-emphasis);
+    background-color: var(--color-fg-muted);
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 12px;
+}
+</style>
+
+
+
+
+<body>
+    <div id="header">
+<h1 class="postTitle">分布式锁：Redisson   --结算中台</h1>
+<div class="title-right">
+    <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathHome" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+    <a href="https://github.com/hanlinyuanexplosivescholar/tech-reborn.github.io/issues/26" target="_blank" class="btn btn-invisible circle" title="Issue">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathIssue" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+
+    <a class="btn btn-invisible circle" onclick="modeSwitch();" title="切换主题">
+        <svg class="octicon" width="16" height="16" >
+            <path id="themeSwitch" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+
+</div>
+</div>
+    <div id="content">
+<div class="markdown-body" id="postBody"><p>现代应用程序的复杂性日益增加，特别是微服务和分布式系统，这使得管理共享资源需要强大的机制。在多个应用程序实例或节点之间，不受控制的并发访问可能导致诸如竞态条件和数据不一致等关键问题。分布式锁作为一种基本原语应运而生，旨在确保互斥性，即在任何给定时刻，只有一个进程可以访问共享资源。</p>
+<p>Redisson，一个功能强大且被广泛采用的Redis Java客户端，提供了一套全面的分布式对象和服务，其分布式锁功能是构建可靠分布式应用程序的基石。Redisson通过提供熟悉的Java <code class="notranslate">Lock</code>接口（由Redis支持）来简化分布式锁的复杂性。这种架构的转变，从传统的单进程应用转向分布式系统，使得对分布式协调原语的需求急剧增加，从而使Redisson等工具变得不可或缺。竞态条件和数据不一致是分布式系统中未受管理并发访问共享资源的直接且不可避免的后果，而分布式锁正是为了解决这些问题而设计的。</p>
+<p>本文将深入探讨Redisson分布式锁的核心原理，从基本的Redis锁开始，逐步深入到Redlock算法，最后探讨Redisson的高级功能，如可重入性、看门狗机制和公平性，同时也将探讨常见的批评意见和有效使用的最佳实践。</p>
+<h2>一、基本挑战：分布式系统中的并发性</h2>
+<p>在分布式环境中，多个独立的进程或线程，通常运行在不同的机器上，频繁地尝试访问和修改相同的共享资源。这些资源可以从数据库记录、共享存储中的文件到库存数量和支付网关状态等。如果没有适当的同步，这种并发访问可能导致以下问题：</p>
+<ul>
+<li><strong>竞态条件：</strong> 指操作结果取决于其他操作的不可预测的顺序或时机的情况，导致非确定性结果。</li>
+<li><strong>数据不一致性：</strong> 导致数据损坏、更新丢失（一个更新覆盖另一个更新而未合并其更改），或整体系统状态不正确。</li>
+</ul>
+<p>在单实例应用程序（例如，一个单体Java应用程序）中，简单的同步机制，如Java的<code class="notranslate">synchronized</code>关键字或<code class="notranslate">java.util.concurrent.locks.ReentrantLock</code>，是有效的。然而，这些机制仅限于单个Java虚拟机（JVM），无法协调跨不同应用程序实例或运行在独立物理或虚拟机上的服务之间的访问。</p>
+<p>为了在分布式环境中真正有效，锁定机制必须保证几个关键属性：</p>
+<ul>
+<li><strong>互斥性：</strong> 最基本的属性，确保在任何给定时刻，只有一个客户端可以持有特定共享资源的锁。</li>
+<li><strong>无死锁性：</strong> 系统必须确保最终总是可以获取锁。这意味着，即使持有锁的客户端崩溃或与网络分区，锁也必须最终被释放（例如，通过生存时间，TTL），以防止其他客户端无限期阻塞。</li>
+<li><strong>容错性：</strong> 分布式锁定系统应保持运行，并允许客户端获取和释放锁，即使其某些底层节点发生故障。这通常通过依赖多数（法定人数）节点可用而不是单点故障来实现。</li>
+<li><strong>隔离（Fencing，对正确性至关重要）：</strong> 一个更高级但至关重要的属性，特别是对于正确性关键操作。隔离提供了一种机制，确保来自旧的“陈旧”锁持有者（一个客户端认为它持有锁但其锁已过期并被另一个客户端重新获取）的操作被受保护的资源拒绝。这通常通过锁服务发出的单调递增令牌来实现，资源在每次写入时都会验证该令牌。</li>
+</ul>
+<p>对锁是用于“效率”还是用于“正确性”的明确区分，揭示了一个开发者经常忽视的关键设计权衡。这种区分表明，分布式锁解决方案的选择及其实现的严谨性应与锁失败的后果严重程度直接相关。例如，一个简单的带有短TTL的<code class="notranslate">SETNX</code>可能适用于速率限制（效率），但对于金融交易（正确性）则完全不适用，因为数据完整性至关重要。</p>
+<p>分布式锁中生存时间（TTL）的必要性是解决“无死锁性”属性的直接方案，确保崩溃或分区客户端不会永久阻塞对共享资源的访问。如果一个锁没有设置TTL，那么一个客户端的故障将导致对锁定资源的永久拒绝服务，这违反了基本的可存活性保证。</p>
+<p>“隔离令牌”概念的引入，揭示了分布式锁的更深层次复杂性和责任，这意味着真正的数据一致性通常需要锁服务和受保护资源本身的协同作用。隔离令牌旨在解决一个更微妙的问题：一个曾经是锁持有者但由于暂停（例如，垃圾回收）导致其锁过期并被另一个客户端重新获取的客户端，随后恢复操作并写入陈旧数据。如果受保护的资源不主动参与验证锁持有者的“新鲜度”，那么分布式锁本身可能无法保证绝对的正确性。这突出了在分布式系统中实现健壮一致性是一个多层问题，超出了仅仅锁定机制的范畴。</p>
+<h2>二、Redis作为分布式锁原语</h2>
+<p>Redis提供了一个强大且原子性的命令来获取锁，构成了分布式锁的基本构建块：<code class="notranslate">SET resource_name my_random_value NX PX 30000</code>。</p>
+<ul>
+<li><code class="notranslate">SET</code>：此命令在Redis中设置一个键值对。</li>
+<li><code class="notranslate">NX</code>（Not Exists）：此选项确保键（<code class="notranslate">resource_name</code>）仅在<strong>不存在</strong>时才设置。这对于互斥性至关重要，保证了只有第一个尝试获取给定资源锁的客户端才能成功。</li>
+<li><code class="notranslate">PX 30000</code>（毫秒级过期时间）：此选项为键设置过期时间（例如，30,000毫秒或30秒）。这对于无死锁性至关重要，因为它确保即使持有锁的客户端崩溃或未能显式释放锁，锁也会在指定时间后自动释放。</li>
+<li><code class="notranslate">my_random_value</code>：这是一个唯一的随机字符串（例如，UUID或客户端ID与时间戳的组合），作为锁键的值。此值对于安全释放锁至关重要，因为它允许验证只有原始锁所有者才能删除它，防止一个客户端无意中释放另一个客户端的锁。</li>
+</ul>
+<p>仅仅使用<code class="notranslate">DEL resource_name</code>命令来释放锁在分布式环境中本质上是不安全的。考虑一个场景：客户端A获取了锁，但随后经历了长时间的延迟（例如，长时间的垃圾回收暂停）。如果此延迟超过了锁的TTL，锁将自动过期。客户端B随后可以获取同一资源的锁。如果客户端A随后恢复并执行<code class="notranslate">DEL resource_name</code>，它将错误地删除客户端B当前持有的锁，从而违反互斥性。为了防止这种竞态条件并确保检查和删除操作的原子性，可以使用Lua脚本：</p>
+<p><strong>Lua</strong></p>
+<pre class="notranslate"><code class="notranslate">if redis.call("get",KEYS[1]) == ARGV[1] then
+    return redis.call("del",KEYS[1])
+else
+    return 0
+end
+</code></pre>
+<p>此脚本原子性地检查锁键的值是否与当前客户端提供的<code class="notranslate">my_random_value</code>匹配（即，验证所有权），然后尝试删除键。Redis保证Lua脚本的原子执行，确保<code class="notranslate">GET</code>和<code class="notranslate">DEL</code>操作被视为一个单一的、不可分割的单元。</p>
+<p>尽管<code class="notranslate">SET NX PX</code>命令和Lua脚本为单个Redis实例提供了强大的保证，但此设置在分布式系统中仍然存在一个关键漏洞：主从故障转移问题。如果客户端A在Redis主节点上获取了锁，但主节点在锁键成功复制到其从节点之前崩溃，那么一个从节点可能会在从未收到锁键的情况下被提升为主节点。在这种新的主从配置中，客户端B可以获取同一资源的锁，认为它是可用的，即使客户端A在概念上仍然持有它（或者至少认为它持有）。这导致了安全违规，即两个客户端同时持有同一资源的锁。</p>
+<p>从<code class="notranslate">SETNX</code> + <code class="notranslate">EXPIRE</code>到原子性的<code class="notranslate">SET NX PX</code>命令的演变，是解决关键竞态条件的直接结果。这突显了看似微小的非原子操作如何在分布式系统中引入严重的漏洞。这种演变不仅是功能上的进步，更是分布式系统设计中的一个实际教训，表明了原子性在分布式操作中防止部分故障导致系统范围不一致性的根本重要性。</p>
+<p>存储在锁中的“唯一随机值”不仅仅是一个标识符；它是通过Lua脚本安全释放锁的​<strong>实现机制</strong>​，直接防止客户端意外释放由另一个客户端获取的锁。这种随机值与Lua脚本的结合，确保了在客户端操作时间超出锁的TTL时，锁的互斥性得以维护。</p>
+<p>“主从故障转移问题”表明，即使在单个Redis实例上进行原子操作，底层部署架构也会为分布式锁引入新的故障模式，使得像Redlock这样的多实例方法对于真正的容错性变得必要。这揭示了分布式锁的解决方案通常在于锁服务本身的架构，而不仅仅是所使用的命令。</p>
+<h2>三、Redlock算法：实现容错性的多实例方法</h2>
+<p>Redlock算法由Redis的创建者Salvatore Sanfilippo提出，旨在解决使用单个Redis实例作为分布式锁时固有的单点故障和主从故障转移问题。Redlock通过在多个独立的Redis主实例上同时获取锁，从而分散风险，以实现更高的可用性和安全性。</p>
+<p>锁获取的详细步骤如下：Redlock算法通过客户端尝试在一组N个独立的Redis主实例上获取锁来操作。要使锁被视为成功获取，大多数（法定人数）这些实例必须在特定时间范围内授予锁。</p>
+<ol>
+<li><strong>客户端时间戳：</strong> 客户端首先记录当前系统时间（我们称之为<code class="notranslate">T1</code>），然后启动锁获取过程。</li>
+<li><strong>顺序锁获取：</strong> 客户端尝试在每个N个独立的Redis主实例上顺序获取锁。对于每个实例，它发送<code class="notranslate">SET resource_name my_random_value NX PX timeout</code>命令。每个<code class="notranslate">SET</code>命令都使用一个小的超时时间（通常在5-50毫秒范围内），以防止如果特定Redis节点宕机或延迟高时客户端被无限期阻塞。</li>
+<li><strong>法定人数检查和时间验证：</strong> 仅当满足两个条件时，锁才被视为成功获取：
+<ul>
+<li>客户端成功在<strong>多数</strong>实例（即，至少N/2 + 1个节点）上获取了锁。</li>
+<li>获取这些锁所经过的总时间（计算为<code class="notranslate">current_time - T1</code>）小于指定的<code class="notranslate">lock validity time</code>（为锁键设置的TTL）。</li>
+</ul>
+</li>
+<li><strong>释放部分锁：</strong> 如果锁获取尝试失败（因为未能锁定多数实例，或总获取时间超过了有效期），客户端必须释放它已成功获取锁的所有实例上的锁。这确保不会留下“游离”的锁。</li>
+<li><strong>失败时重试：</strong> 如果客户端无法获取锁，它应该等待一个随机延迟，然后重试整个获取过程。这种随机延迟有助于使同时尝试获取同一锁的多个客户端去同步，防止“惊群效应”问题，并减少“脑裂”情况的发生，即没有客户端能够赢得锁。</li>
+</ol>
+<p>Redlock的正确性关键地依赖于不同Redis实例上的本地时钟以大致相同的速率更新的假设。显著的时钟跳跃或客户端与Redis实例之间的高网络延迟可能会影响算法的保证，可能导致多个客户端同时认为它们持有锁的情况。</p>
+<p>Redlock对独立Redis主节点“多数”（法定人数）的依赖，是Paxos/Raft共识原则的直接应用，尽管形式更简化。这表明分布式锁本质上触及了分布式系统共识的根本问题。通过要求多数，系统可以在N/2个节点发生故障时仍能容忍，而不会失去其进展或确保一致性的能力。这使得Redlock与更广泛、更复杂的分布式系统理论相关联。</p>
+<p>在获取单个Redis实例上的锁时使用的“小超时时间”（例如，5-50毫秒），是直接旨在提高Redlock算法“活跃性”的关键设计选择，通过防止客户端在单个无响应节点上无限期阻塞。这个小超时时间确保了如果某个实例无响应，客户端能够快速尝试与下一个实例通信，从而最大限度地减少在所有节点上尝试获取锁的总时间，并提高满足总锁有效期约束的可能性。这是一种针对实际网络条件的实用优化。</p>
+<p>在重试锁获取之前采用“随机延迟”，是分布式系统中缓解“惊群效应”问题和减少争用的常见启发式方法，展示了提高系统公平性和稳定性的实用方法。如果所有失败的客户端同时重试，它们可能会使系统不堪重负并导致故障持续。随机延迟分散了重试尝试，减少了争用，并增加了最终有一个客户端成功的机会，从而提高了整体系统稳定性和公平性。</p>
+<p><strong>表1：Redlock获取流程</strong></p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>步骤</th>
+<th>操作</th>
+<th>目的/理由</th>
+<th>关键Redis命令/概念</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>记录开始时间</strong></td>
+<td>测量锁获取的总时间，并确保其在锁的有效期内。</td>
+<td>客户端时间戳（<code class="notranslate">T1</code>）</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>尝试在N个实例上锁定</strong></td>
+<td>将锁分布到多个独立的Redis主节点，以减轻单点故障。</td>
+<td><code class="notranslate">SET resource_name my_random_value NX PX timeout</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>检查法定人数和时间</strong></td>
+<td>确保互斥性和容错性：多数节点必须同意，并且获取必须足够快。</td>
+<td><code class="notranslate">N/2 + 1</code>成功锁定；<code class="notranslate">(current_time - T1) &lt; lock_validity_time</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>释放部分锁（如果失败）</strong></td>
+<td>如果Redlock整体获取失败，则清理任何已获取的锁，防止“游离”锁。</td>
+<td><code class="notranslate">DEL</code>（通过Lua脚本确保安全）</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>重试（如果失败）</strong></td>
+<td>允许客户端最终获取锁，防止活锁，并使多个客户端去同步。</td>
+<td>重试前随机延迟</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<h2>四、Redisson的高级分布式锁实现</h2>
+<p>Redisson作为一个健壮的Java客户端脱颖而出，它在原始Redis命令之上提供了一个高级抽象层。它通过提供熟悉的Java对象和服务（包括各种类型的分布式锁，这些锁实现了标准的Java <code class="notranslate">java.util.concurrent.locks.Lock</code>接口）来简化分布式应用程序的开发。这使得开发人员可以使用直观的<code class="notranslate">lock()</code>和<code class="notranslate">unlock()</code>方法，显著降低了将Redis集成到Java应用程序中的学习曲线。</p>
+<h3>RLock（可重入锁）</h3>
+<p>Redisson的<code class="notranslate">RLock</code>实现了可重入锁，这意味着同一个线程可以多次获取锁而不会阻塞自己。同一线程每次成功获取锁都会使内部计数器递增。只有当该线程的计数器递减到零时，锁才真正释放，确保资源在所有嵌套的锁获取被所有者线程释放之前保持锁定状态。</p>
+<p>为了管理可重入性并跟踪锁所有权，Redisson通常使用Redis Hash数据结构。锁名称作为Hash的Redis键。在此Hash内部，字段表示唯一的线程标识符（通常是客户端ID和线程ID的组合），其对应的值存储每个线程的可重入计数。这使得Redisson能够快速检查线程是否已持有锁并增加其计数，或者是否有新线程尝试获取锁。</p>
+<p>当一个线程尝试获取已被持有的锁时，它会进入等待状态。Redisson利用Redis的发布/订阅（Pub/Sub）机制有效地通知这些等待线程。当锁被释放时，会在与该锁关联的专用Pub/Sub通道上发布一条消息，唤醒一个或多个等待客户端以争夺锁。</p>
+<h3>看门狗机制</h3>
+<p>分布式锁的一个关键挑战是，如果关键代码段的执行时间超过最初设置的<code class="notranslate">leaseTime</code>，锁可能会过早过期。这可能由于不可预见的延迟（如长时间的垃圾回收暂停、网络问题或复杂的业务逻辑）而发生。如果锁过期，另一个客户端可能会获取它，导致并发访问和数据不一致。</p>
+<p>为了缓解这个问题，Redisson实现了一个智能的“看门狗”机制。当客户端使用<code class="notranslate">lock()</code>方法获取锁时（不指定<code class="notranslate">leaseTime</code>），Redisson会自动启动一个后台线程（看门狗）。看门狗会定期检查持有锁的线程是否仍然存活以及锁是否仍然被持有。如果是，它会自动延长锁的过期时间（TTL），将其重置为默认的<code class="notranslate">lockWatchdogTimeout</code>（默认为30秒）。这种持续的续约确保只要拥有线程在主动处理关键代码段，锁就保持有效。</p>
+<p>如果锁获取期间显式提供了特定的<code class="notranslate">leaseTime</code>（例如，<code class="notranslate">lock(10, TimeUnit.SECONDS)</code>），则该特定锁的看门狗机制将被禁用。在这种情况下，锁将在指定的<code class="notranslate">leaseTime</code>后严格过期，无论拥有线程是否已完成其工作。此选项适用于具有可预测、短持续时间的操作。</p>
+<p>Redisson的看门狗机制直接解决了“锁过期但业务逻辑尚未完成”的关键问题，这是分布式系统中的一个主要实际挑战，通过自动延长锁的TTL来防止过早过期。看门狗机制是Redisson的一个关键特性，它提供了比基本Redis锁更健壮的解决方案，显著提高了长时间运行的关键部分的可靠性，并降低了数据不一致的风险。</p>
+<h3>FairLock（公平锁）</h3>
+<p>Redisson的<code class="notranslate">FairLock</code>保证了先到先得的获取顺序。这意味着等待锁的线程将按照它们请求锁的精确顺序获取锁，防止“饥饿”现象，即某些线程可能反复输掉锁的竞争。</p>
+<p>为了维护严格的获取顺序，Redisson的<code class="notranslate">FairLock</code>通常利用Redis有序集合（Sorted Set）。每个等待线程都会将自己添加到一个有序集合中，并带有一个唯一的分数（例如，单调递增的时间戳或序列号）。有序集合随后充当一个队列，最低分数（最早请求）位于队列头部。锁被授予给与分数最小的条目对应的线程。</p>
+<p><code class="notranslate">FairLock</code>包含检测和处理等待队列中“死亡”线程（已崩溃或无响应的线程）的逻辑。Redisson会等待一小段时间（例如5秒），以等待死亡线程可能返回。如果它没有返回，Redisson将跳过它，允许队列中的下一个线程获取锁，从而防止由于队列头部的崩溃客户端而导致的无限期阻塞。</p>
+<h3>MultiLock（多重锁）和 ReadWriteLock（读写锁）</h3>
+<ul>
+<li><strong>MultiLock：</strong> 这种复合锁类型允许开发人员将多个独立的<code class="notranslate">RLock</code>对象（甚至可以属于不同的Redisson实例）分组，并将它们视为单个逻辑锁。当获取<code class="notranslate">MultiLock</code>时，它会尝试获取所有底层<code class="notranslate">RLock</code>。这对于协调对多个不同但相关资源的访问非常有用。</li>
+<li><strong>ReadWriteLock：</strong> Redisson提供了一个分布式<code class="notranslate">ReadWriteLock</code>，它反映了其<code class="notranslate">java.util.concurrent.locks.ReadWriteLock</code>对应物的行为。它为资源提供独立的读锁和写锁。多个读取器可以并发持有读锁（共享访问），但只有一个写入器可以持有写锁（独占访问），并且在写入器持有写锁时，任何读取器都不能同时持有读锁。这优化了读密集型工作负载的并发性。</li>
+</ul>
+<p>Redisson的<code class="notranslate">RLock</code>可重入性很可能通过Redis Hash数据结构实现，其中Hash字段表示线程ID，Hash值存储可重入计数。这是一种在分布式键值存储中跟踪每个线程锁获取的常见且高效的模式。</p>
+<p>Redisson的<code class="notranslate">FairLock</code>很可能使用Redis有序集合来维护严格的先到先得获取顺序，其中分数表示进入顺序（例如，时间戳）。为了在分布式、持久化环境中维护等待客户端的严格顺序，有序集合是最逻辑和高效的数据结构。</p>
+<p>Redisson提供多种不同锁类型（RLock、FairLock、MultiLock、ReadWriteLock），这表明其对分布式锁的理解是“一刀切”的解决方案无法满足所有需求，不同的应用程序需求需要专门的并发原语。这种全面的产品表明了对分布式并发挑战的成熟处理方法，为开发人员提供了量身定制的工具，而不是通用解决方案。</p>
+<p><strong>表2：Redisson锁类型及其核心原理</strong></p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>锁类型</th>
+<th>关键特性</th>
+<th>可重入性支持</th>
+<th>看门狗支持</th>
+<th>公平性</th>
+<th>主要用例</th>
+<th>底层Redis机制（高层）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RLock</strong></td>
+<td>基本互斥，熟悉的Java<code class="notranslate">Lock</code>接口。</td>
+<td>是</td>
+<td>是（<code class="notranslate">lock()</code>默认）</td>
+<td>否</td>
+<td>通用分布式互斥。</td>
+<td>Hash（用于可重入性），Pub/Sub（用于等待）</td>
+</tr>
+<tr>
+<td><strong>FairLock</strong></td>
+<td>保证先到先得的获取顺序。</td>
+<td>是</td>
+<td>是（<code class="notranslate">lock()</code>默认）</td>
+<td>是</td>
+<td>需要严格锁定请求顺序的场景（例如，任务队列）。</td>
+<td>有序集合（用于队列），Pub/Sub</td>
+</tr>
+<tr>
+<td><strong>MultiLock</strong></td>
+<td>组合多个锁，原子性地获取/释放它们。</td>
+<td>是（继承自RLock）</td>
+<td>是</td>
+<td>否（取决于单个锁）</td>
+<td>协调对多个独立但相关资源的访问。</td>
+<td>多个RLock实例，客户端协调逻辑</td>
+</tr>
+<tr>
+<td><strong>ReadWriteLock</strong></td>
+<td>独立的读（共享）和写（独占）锁。</td>
+<td>是（每个子锁）</td>
+<td>是</td>
+<td>否</td>
+<td>优化读密集型资源的并发性。</td>
+<td>Hash（用于所有权/计数），Pub/Sub</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<h2>五、批评、陷阱和最佳实践</h2>
+<h3>Redlock的常见批评</h3>
+<p>尽管Redlock比单实例Redis锁有了显著改进，但它也面临着著名的学术审查，特别是来自分布式系统专家Martin Kleppmann的批评。</p>
+<p>Kleppmann认为，Redlock在确保数据完整性至关重要的场景下，并不能完全保证正确性，这主要归因于：</p>
+<ul>
+<li><strong>对时钟同步的依赖：</strong> Redlock的正确性依赖于独立Redis节点之间时钟不会显著漂移的假设。如果一个节点的时钟向前跳跃，可能导致锁过早过期，从而允许另一个客户端获取锁，而原始客户端仍然认为它持有锁，导致安全违规。</li>
+<li><strong>缺少隔离令牌：</strong> 一个主要批评是Redlock本身不生成或强制执行隔离令牌。如前所述，隔离令牌对于防止“陈旧”锁持有者（失去锁但继续操作的客户端）损坏受保护资源上的数据至关重要。没有此类令牌，资源无法区分来自合法当前锁持有者和过时持有者的操作。</li>
+</ul>
+<p>Redis和Redlock的作者Antirez对这些批评做出了回应。对于时钟跳跃问题，他建议采取缓解措施，例如避免手动调整时钟，依赖NTP等渐进式时间同步协议，或在可用时使用单调时间API。虽然他承认隔离令牌问题，但他认为验证操作与隔离令牌的责任通常在于应用程序层或存储服务本身，而不是锁算法。Redisson在其部分，在锁释放时验证唯一的随机字符串，以防止一个客户端释放另一个客户端的锁，这是一种安全措施，但与受保护资源的隔离令牌不同。</p>
+<p>Martin Kleppmann和Antirez之间关于Redlock安全性的持续争论，表明即使是广泛采用的分布式系统解决方案，也可能根据上下文和假设，存在细微缺陷或对“安全性”有不同的解释。这表明开发人员必须批判性地评估任何分布式原语所提供的保证。</p>
+<h3>使用分布式锁的常见陷阱</h3>
+<p>除了算法争议之外，实际实现也可能带来一系列挑战：</p>
+<ul>
+<li><strong>非原子操作（历史背景）：</strong> 历史上，一个常见的陷阱是使用<code class="notranslate">SETNX</code>（如果不存在则设置）后跟一个单独的<code class="notranslate">EXPIRE</code>命令来实现Redis锁。如果客户端在这两个命令之间崩溃，锁键将被设置但永不过期，导致永久死锁。现代Redis客户端和Redisson通过使用原子性的<code class="notranslate">SET key value NX PX</code>命令或原子Lua脚本来缓解这个问题。</li>
+<li><strong>长时间操作期间锁过期：</strong> 即使有初始TTL，关键代码段的执行时间也可能比预期更长（例如，由于繁重的计算、数据库调用或网络延迟）。如果锁过早过期，另一个客户端可能会获取它，导致并发访问。Redisson的看门狗机制专门设计用于通过自动续订锁的TTL来解决此问题。</li>
+<li><strong>与数据库事务（<code class="notranslate">@Transactional</code>）的不当交互：</strong> Spring Boot应用程序中一个微妙但关键的陷阱是在带有<code class="notranslate">@Transactional</code>注解的方法<strong>内部</strong>获取Redis分布式锁。操作顺序可能是：获取锁 -&gt; 业务逻辑 -&gt; 释放锁 -&gt; <strong>然后</strong>数据库事务提交。这会创建一个时间窗口，在此期间，另一个进程可能在第一个进程释放锁之后但在第一个进程的数据库更改提交之前获取Redis锁。如果第一个事务随后回滚，第二个进程将操作不一致或未提交的数据。正确的做法是在事务方法开始<strong>之前</strong>获取分布式锁，并在数据库事务成功提交<strong>之后</strong>释放它。</li>
+</ul>
+<p>Redis分布式锁与Spring的<code class="notranslate">@Transactional</code>注解之间的交互是一个常见且微妙的陷阱，可能导致数据不一致。这是因为锁可能在数据库事务提交<strong>之前</strong>被释放，从而为其他进程创建了一个操作可能未提交或已回滚数据的窗口。这种现象突出了分布式应用程序设计中一个关键的交叉关注点，即不同系统组件（Redis和RDBMS）之间的协调至关重要。</p>
+<h3>健壮分布式锁的最佳实践</h3>
+<p>为了最大限度地提高Redisson分布式锁的可靠性和有效性，请考虑以下最佳实践：</p>
+<ul>
+<li><strong>选择正确的锁类型：</strong> 根据应用程序的特定一致性、公平性、和并发性要求，仔细选择合适的Redisson锁类型（RLock、FairLock、MultiLock、ReadWriteLock）。</li>
+<li><strong>实施健壮的重试逻辑：</strong> 当<code class="notranslate">tryLock()</code>未能立即获取锁时，实施带有指数退避的重试机制。这可以防止“惊群效应”问题，即许多客户端反复争夺锁，并允许系统有时间稳定。</li>
+<li><strong>监控和记录锁事件：</strong> 对锁获取尝试、成功、失败和释放实施全面的日志记录。监控与锁争用、平均锁持有时间和看门狗续约相关的指标，以主动识别性能瓶颈或潜在问题。</li>
+<li><strong>保持关键代码段简短：</strong> 设计应用程序以使关键代码段（受锁保护的部分）尽可能简短高效。这可以最大限度地缩短锁持有时间，减少争用并提高整体系统吞吐量。</li>
+<li><strong>优雅地处理异常：</strong> 始终确保在<code class="notranslate">finally</code>块或类似结构中释放锁，以保证即使在关键代码段内发生异常，锁也会被释放，从而防止死锁。</li>
+<li><strong>确保原子性：</strong> 始终使用Redisson的高级API，这些API在内部利用原子Redis命令（<code class="notranslate">SET NX PX</code>）和Lua脚本进行锁获取和释放。避免自定义的非原子Redis命令序列。</li>
+<li><strong>考虑应用程序级隔离：</strong> 对于数据损坏不可接受的正确性关键场景，如果底层存储服务本身不支持隔离令牌，则实施应用程序级检查。这可能涉及在每次写入受保护资源时传递一个单调递增的版本号（从可靠来源获取，可能是锁服务本身，如果它能提供的话），并让资源拒绝带有过时令牌的操作。</li>
+</ul>
+<p>对“隔离令牌”的持续强调，以及Redlock不原生提供它们的确认，表明在分布式锁中实现真正的“正确性”通常超越了锁服务本身，需要<strong>受保护资源</strong>的主动参与和验证。Kleppmann的主要批评围绕Redlock中缺少隔离令牌展开。隔离令牌旨在让受保护的资源拒绝来自陈旧锁持有者的操作。这意味着，如果其保护的资源“不知情”且不验证锁持有者的“新鲜度”，则分布式锁本身无法保证绝对的数据完整性。这是一种更高阶的含义：分布式操作的最终安全性不仅取决于锁定机制，还取决于与锁交互的系统的设计和行为。它将部分正确性责任转移到应用程序或存储层。</p>
+<h2>结论</h2>
+<p>Redisson为Java应用程序实现分布式锁提供了一个健壮、功能丰富且开发人员友好的解决方案。它有效地抽象了底层Redis操作的复杂性和Redlock算法的细微差别，提供了熟悉的Java <code class="notranslate">Lock</code>接口。</p>
+<p>其关键特性，例如可重入性、用于自动锁续约的智能看门狗机制以及对公平队列的支持，显著增强了分布式锁在实际场景中的可靠性和可用性，解决了诸如过早锁过期等常见陷阱。</p>
+<p>然而，与任何分布式系统原语一样，对底层原理的透彻理解至关重要，包括Redlock算法的优点和公认的局限性（例如，它对时钟同步的依赖以及缺少原生隔离令牌）。开发人员还必须了解实际陷阱，例如与数据库事务的不当集成。</p>
+<p>通过遵循最佳实践——包括仔细选择合适的锁类型、实施健壮的重试逻辑、全面监控、保持关键代码段简洁、确保优雅的异常处理以及在绝对正确性至关重要时考虑应用程序级隔离——开发人员可以有效地利用Redisson来构建高度并发、一致和容错的分布式系统。</p>
+<p>最终，分布式锁的探索突出了性能、可用性和一致性（反映了数据库事务的更广泛ACID属性）之间错综复杂的平衡，这对于在复杂分布式架构中设计和操作健壮的应用程序至关重要。</p>
+<p>附1：生产环境代码示例</p>
+<pre class="notranslate"><code class="notranslate">    private void saveOrUpdateSoData(GeneralBatchSaveSoDataVo generalBatchSaveSoDataVo, String logId,String idCode,
+    String source) {
+        List&lt;MongoDayServingVo&gt; mongoDayServingVoList = generalBatchSaveSoDataVo.getMongoDayServingVoList();
+        List&lt;MongoDayServing&gt; mongoDayServings = new ArrayList&lt;&gt;();
+        String dateTimeString = DateUtils.getDateTimeString(new Date());
+
+        //根据数据来源加锁
+        RLock generalBatchSaveSoDataLock = redissonClient.getLock(Constants.LOCK_SODATA_GENERALBATCHSAVESODATA+idCode);
+        try {
+            //加锁
+            generalBatchSaveSoDataLock.lock();
+            //缓存id
+            midasSoBoardDayService.setRedisMidasId(mongoDayServingVoList.stream().map(e -&gt;
+                    idCode + e.getId()).collect(Collectors.toList()));
+            mongoDayServingVoList.forEach(e -&gt; {
+                MongoDayServing mongoDayServing = new MongoDayServing();
+                BeanUtils.copyProperties(e, mongoDayServing);
+                //增加ID前缀
+                mongoDayServing.setId(idCode + mongoDayServing.getId());
+                mongoDayServing.setSrSource(source);//数据来源类型
+                mongoDayServing.setSrUpTime(dateTimeString);
+                mongoDayServing.setIsValid("1");
+                //关联so头行信息
+                midasSoBoardDayService.setOrderFields(logId, mongoDayServing);
+                mongoDayServings.add(mongoDayServing);
+            });
+            //关联channel信息
+            midasSoBoardDayService.setChannel(logId, mongoDayServings);
+            //过滤异常数据
+            String lastAccrualTime =  monthBillingDateService.getMonthAccrualDate(true);
+            List&lt;MongoDayServing&gt; finalMongoDayServings = midasSoBoardDayService.filterExceptionData(mongoDayServings, lastAccrualTime,null);
+            if (CollectionUtils.isEmpty(finalMongoDayServings)){
+                log.info(logId+"过滤后数据为0");
+                return;
+            }
+
+            //---------------------------开始清除缓存midas id   为了区分是否是新增还是修改--------------------------------------------------
+            midasSoBoardDayService.removeRedisMidasId(mongoDayServingVoList.stream().map(e -&gt; idCode + e.getId()).collect(Collectors.toList()));
+            //---------------------------结束清除缓存midas id   为了区分是否是新增还是修改----------------------
+            //批量入库
+            finalMongoDayServings.forEach(e-&gt;e.setRebate(BigDecimal.ZERO));
+            servingMapper.updateBatchAllGeneral(finalMongoDayServings);
+        } catch (Exception e) {
+            log.error(logId + "数据入库异常");
+        } finally {
+            generalBatchSaveSoDataLock.unlock();
+        }
+        log.info(logId + "通用接口，批量保存或更新SoData结束");
+    }
+
+</code></pre></div>
+<div style="font-size:small;margin-top:8px;float:right;"></div>
+
+<button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
+<div class="comments" id="comments"></div>
+
+</div>
+    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io">reborn's technical blog</a></div>
+<div id="footer2">
+    <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
+</div>
+
+<script>
+var now=new Date();
+document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+
+if(""!=""){
+    var startSite=new Date("");
+    var diff=now.getTime()-startSite.getTime();
+    var diffDay=Math.floor(diff/(1000*60*60*24));
+    document.getElementById("runday").innerHTML="网站运行"+diffDay+"天"+" • ";
+}
+</script></div>
+</body>
+<script>
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z', 'copy': 'M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z', 'check': 'M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'};
+var utterancesLoad=0;
+
+let themeSettings={
+    "dark": ["dark","moon","#00f0ff","dark-blue"],
+    "light": ["light","sun","#ff5000","github-light"],
+    "auto": ["auto","sync","","preferred-color-scheme"]
+};
+function changeTheme(mode, icon, color, utheme){
+    document.documentElement.setAttribute("data-color-mode",mode);
+    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
+    document.getElementById("themeSwitch").parentNode.style.color=color;
+    if(utterancesLoad==1){utterancesTheme(utheme);}
+}
+function modeSwitch(){
+    let currentMode=document.documentElement.getAttribute('data-color-mode');
+    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
+    localStorage.setItem("meek_theme", newMode);
+    if(themeSettings[newMode]){
+        changeTheme(...themeSettings[newMode]);
+    }
+}
+function utterancesTheme(theme){
+    const message={type:'set-theme',theme: theme};
+    const iframe=document.getElementsByClassName('utterances-frame')[0];
+    iframe.contentWindow.postMessage(message,'https://utteranc.es');
+}
+if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
+console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
+</script>
+
+<script>
+document.getElementById("pathHome").setAttribute("d",IconList["home"]);
+document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
+
+
+
+function openComments(){
+    cm=document.getElementById("comments");
+    cmButton=document.getElementById("cmButton");
+    cmButton.innerHTML="loading";
+    span=document.createElement("span");
+    span.setAttribute("class","AnimatedEllipsis");
+    cmButton.appendChild(span);
+
+    script=document.createElement("script");
+    script.setAttribute("src","https://utteranc.es/client.js");
+    script.setAttribute("repo","hanlinyuanexplosivescholar/tech-reborn.github.io");
+    script.setAttribute("issue-term","title");
+    
+    if(localStorage.getItem("meek_theme")=="dark"){script.setAttribute("theme","dark-blue");}
+    else if(localStorage.getItem("meek_theme")=="light") {script.setAttribute("theme","github-light");}
+    else{script.setAttribute("theme","preferred-color-scheme");}
+    
+    script.setAttribute("crossorigin","anonymous");
+    script.setAttribute("async","");
+    cm.appendChild(script);
+
+    int=self.setInterval("iFrameLoading()",200);
+}
+
+function iFrameLoading(){
+    var utterances=document.getElementsByClassName('utterances');
+    if(utterances.length==1){
+        if(utterances[0].style.height!=""){
+            utterancesLoad=1;
+            int=window.clearInterval(int);
+            document.getElementById("cmButton").style.display="none";
+            console.log("utterances Load OK");
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const createClipboardHTML = (codeContent, additionalClasses = '') => `
+        <pre class="notranslate"><code class="notranslate">${codeContent}</code></pre>
+        <div class="clipboard-container position-absolute right-0 top-0 ${additionalClasses}">
+            <clipboard-copy class="ClipboardButton btn m-2 p-0" role="button" style="display: inherit;">
+                <svg height="16" width="16" class="octicon octicon-copy m-2"><path d="${IconList["copy"]}"></path></svg>
+                <svg height="16" width="16" class="octicon octicon-check color-fg-success m-2 d-none"><path d="${IconList["check"]}"></path></svg>
+            </clipboard-copy>
+            <div class="copy-feedback">Copied!</div>
+        </div>
+    `;
+
+    const handleCodeElements = (selector = '') => {
+        document.querySelectorAll(selector).forEach(codeElement => {
+            const codeContent = codeElement.innerHTML;
+            const newStructure = document.createElement('div');
+            newStructure.className = 'snippet-clipboard-content position-relative overflow-auto';
+            newStructure.innerHTML = createClipboardHTML(codeContent);
+
+            const parentElement = codeElement.parentElement;
+            if (selector.includes('highlight')) {
+                parentElement.insertBefore(newStructure, codeElement.nextSibling);
+                parentElement.removeChild(codeElement);
+            } else {
+                parentElement.parentElement.replaceChild(newStructure, parentElement);
+            }
+        });
+    };
+
+    handleCodeElements('pre.notranslate > code.notranslate');
+    handleCodeElements('div.highlight > pre.notranslate');
+
+    let currentFeedback = null;
+    document.querySelectorAll('clipboard-copy').forEach(copyButton => {
+        copyButton.addEventListener('click', () => {
+            const codeContent = copyButton.closest('.snippet-clipboard-content').innerText;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = codeContent;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            const copyIcon = copyButton.querySelector('.octicon-copy');
+            const checkIcon = copyButton.querySelector('.octicon-check');
+            const copyFeedback = copyButton.nextElementSibling;
+
+            if (currentFeedback && currentFeedback !== copyFeedback) {currentFeedback.style.display = 'none';}
+            currentFeedback = copyFeedback;
+
+            copyIcon.classList.add('d-none');
+            checkIcon.classList.remove('d-none');
+            copyFeedback.style.display = 'block';
+            copyButton.style.borderColor = 'var(--color-success-fg)';
+
+            setTimeout(() => {
+                copyIcon.classList.remove('d-none');
+                checkIcon.classList.add('d-none');
+                copyFeedback.style.display = 'none';
+                copyButton.style.borderColor = '';
+            }, 2000);
+        });
+    });
+});
+
+</script>
+
+
+</html>
