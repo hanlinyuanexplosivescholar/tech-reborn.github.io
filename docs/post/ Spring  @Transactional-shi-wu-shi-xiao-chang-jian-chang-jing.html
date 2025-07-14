@@ -10,9 +10,11 @@
         let theme = localStorage.getItem("meek_theme") || "light";
         document.documentElement.setAttribute("data-color-mode", theme);
     </script>
-<meta name="description" content="">
+<meta name="description" content="1. 业务方法内部调用
+这是最常见也最容易被忽视的场景。">
 <meta property="og:title" content=" Spring  @Transactional事务失效常见场景">
-<meta property="og:description" content="">
+<meta property="og:description" content="1. 业务方法内部调用
+这是最常见也最容易被忽视的场景。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/%20Spring%20%20%40Transactional-shi-wu-shi-xiao-chang-jian-chang-jing.html">
 <meta property="og:image" content="https://avatars.githubusercontent.com/u/68176923?v=4">
@@ -41,7 +43,17 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
     body {padding: 8px;}
     .postTitle{font-size:24px;}
 }
-
+.copy-feedback {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 50px;
+    color: var(--color-fg-on-emphasis);
+    background-color: var(--color-fg-muted);
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 12px;
+}
 </style>
 
 
@@ -73,7 +85,121 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
 </div>
 </div>
     <div id="content">
-<div class="markdown-body" id="postBody"></div>
+<div class="markdown-body" id="postBody"><ol>
+<li>业务方法内部调用<br>
+这是最常见也最容易被忽视的场景。假设你的服务中有一个方法 methodA 被 <a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/transactional/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/transactional">@transactional</a> 注解，methodA 内部又调用了 methodB（同样被 <a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/transactional/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/transactional">@transactional</a> 注解）。</li>
+</ol>
+<pre class="notranslate"><code class="notranslate">@Service
+public class UserService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Transactional // 事务会生效
+    public void methodA() {
+        // ... some operations ...
+        methodB(); // 内部调用
+    }
+
+    @Transactional // 这里的事务不会生效
+    public void methodB() {
+        // ... some operations ...
+    }
+}
+</code></pre>
+<p>失效原因： Spring 事务是基于 AOP（面向切面编程）实现的。当你调用 methodA 时，Spring 会为它创建一个代理对象。事务的开启、提交、回滚等逻辑都是通过这个代理对象来执行的。然而，当 methodA 在其内部直接调用 methodB 时，methodB 的调用是通过 this 关键字进行的，而不是通过 Spring 的代理对象。这意味着 methodB 的事务注解不会被 Spring AOP 拦截到，因此其事务性不会生效。</p>
+<ol start="2">
+<li>事务方法的访问修饰符不是 public</li>
+</ol>
+<p>失效原因： Spring AOP 默认使用的是 JDK 动态代理或 CGLIB 代理。</p>
+<p>JDK 动态代理： 只能代理接口方法，如果你的类没有实现接口，就无法使用 JDK 动态代理。</p>
+<p>CGLIB 代理： 可以代理类，但它通过继承目标类并重写其方法来实现代理。非 public 方法（private, protected, 默认/包私有）在子类中无法被直接重写（或在代理中无法被拦截），因此 <a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/transactional/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/transactional">@transactional</a> 注解对它们不起作用。</p>
+<p>解决方案： 确保所有需要事务管理的方法都是 public 方法。</p>
+<ol start="3">
+<li>异常被捕获但未抛出</li>
+</ol>
+<pre class="notranslate"><code class="notranslate">@Service
+public class UserService {
+
+    @Transactional
+    public void methodA() {
+        try {
+            // ... database operation that might throw an exception ...
+            throw new RuntimeException("Something went wrong!");
+        } catch (RuntimeException e) {
+            // 异常被捕获但未再次抛出
+            System.out.println("Exception caught: " + e.getMessage());
+            // 事务不会回滚
+        }
+    }
+}
+
+</code></pre>
+<p>失效原因： Spring 事务管理器默认只对**未捕获的运行时异常（RuntimeException 或其子类）**或 Error 进行回滚。如果你在事务方法内部捕获了异常，但没有再次将其抛出，Spring 事务管理器就不会感知到异常的发生，从而不会触发事务回滚，导致事务提交。</p>
+<ol start="4">
+<li>事务传播行为设置不当<br>
+<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/transactional/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/transactional">@transactional</a> 注解的 propagation 属性定义了事务的传播行为。如果设置不当，可能会导致事务没有按预期生效。</li>
+</ol>
+<pre class="notranslate"><code class="notranslate">@Service
+public class UserService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Transactional // 外部方法有事务
+    public void outerMethod() {
+        // ...
+        innerMethod();
+    }
+
+    @Transactional(propagation = Propagation.NOT_SUPPORTED) // 这里的事务不会生效
+    public void innerMethod() {
+        // ...
+    }
+}
+</code></pre>
+<p>失效原因： Propagation.NOT_SUPPORTED 意味着当前方法不应该在事务中运行。如果当前存在事务（outerMethod 的事务），它会被挂起。因此，innerMethod 会在无事务的上下文中执行。类似地，Propagation.NEVER 也会导致事务失效甚至抛异常。</p>
+<p>解决方案： 根据业务需求选择合适的传播行为：</p>
+<p>REQUIRED (默认)： 如果当前存在事务，则加入该事务；如果当前没有事务，则创建一个新的事务。这是最常用的。</p>
+<p>REQUIRES_NEW： 总是创建一个新事务，如果当前存在事务，则挂起当前事务。</p>
+<p>NESTED： 如果当前存在事务，则在嵌套事务中执行；如果当前没有事务，则创建一个新事务。嵌套事务与外部事务有逻辑上的父子关系，可以独立回滚。</p>
+<ol start="5">
+<li>
+<p>数据库不支持事务或未开启事务<br>
+失效原因： 某些数据库存储引擎（如 MySQL 的 MyISAM）不支持事务。或者，即使数据库支持事务，但其配置可能未开启事务功能。</p>
+</li>
+<li>
+<p><a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/transactional/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/transactional">@transactional</a> 注解所在的类没有被 Spring 管理</p>
+</li>
+</ol>
+<pre class="notranslate"><code class="notranslate">public class MyService { // 没有 @Service 或 @Component 注解
+
+    @Transactional
+    public void doSomething() {
+        // ...
+    }
+}
+
+</code></pre>
+<p>失效原因： 只有被 Spring IoC 容器管理的 Bean，Spring 才能对其进行 AOP 增强（包括事务代理）。如果你的类没有被 <a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/service/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/service">@service</a>、<a class="user-mention notranslate" data-hovercard-type="organization" data-hovercard-url="/orgs/component/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/component">@component</a>、<a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/repository/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/repository">@repository</a> 等注解标记，或者没有在 XML 配置中声明为 Bean，Spring 就不会识别并处理它上面的 <a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/transactional/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/transactional">@transactional</a> 注解。</p>
+<ol start="7">
+<li>多线程环境下事务失效</li>
+</ol>
+<pre class="notranslate"><code class="notranslate">@Service
+public class UserService {
+
+    @Transactional
+    public void methodA() {
+        new Thread(() -&gt; {
+            // 在新线程中执行数据库操作
+            // 这里的事务很可能失效，或者无法回滚外部事务
+            userRepository.save(new User("Test User"));
+        }).start();
+    }
+}
+
+</code></pre>
+<p>失效原因： Spring 的事务管理器是基于 线程局部变量（ThreadLocal） 来管理事务上下文的。当你在一个 <a class="user-mention notranslate" data-hovercard-type="user" data-hovercard-url="/users/transactional/hovercard" data-octo-click="hovercard-link-click" data-octo-dimensions="link_type:self" href="https://github.com/transactional">@transactional</a> 方法内部启动一个新的线程时，新线程拥有自己的线程上下文，它无法访问到父线程的事务上下文。因此，在新线程中执行的数据库操作将不在父线程的事务范围内，其事务控制会失效。</p></div>
 <div style="font-size:small;margin-top:8px;float:right;"></div>
 
 <button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
@@ -98,7 +224,7 @@ if(""!=""){
 </script></div>
 </body>
 <script>
-var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z'};
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z', 'copy': 'M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z', 'check': 'M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'};
 var utterancesLoad=0;
 
 let themeSettings={
@@ -171,7 +297,70 @@ function iFrameLoading(){
     }
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    const createClipboardHTML = (codeContent, additionalClasses = '') => `
+        <pre class="notranslate"><code class="notranslate">${codeContent}</code></pre>
+        <div class="clipboard-container position-absolute right-0 top-0 ${additionalClasses}">
+            <clipboard-copy class="ClipboardButton btn m-2 p-0" role="button" style="display: inherit;">
+                <svg height="16" width="16" class="octicon octicon-copy m-2"><path d="${IconList["copy"]}"></path></svg>
+                <svg height="16" width="16" class="octicon octicon-check color-fg-success m-2 d-none"><path d="${IconList["check"]}"></path></svg>
+            </clipboard-copy>
+            <div class="copy-feedback">Copied!</div>
+        </div>
+    `;
 
+    const handleCodeElements = (selector = '') => {
+        document.querySelectorAll(selector).forEach(codeElement => {
+            const codeContent = codeElement.innerHTML;
+            const newStructure = document.createElement('div');
+            newStructure.className = 'snippet-clipboard-content position-relative overflow-auto';
+            newStructure.innerHTML = createClipboardHTML(codeContent);
+
+            const parentElement = codeElement.parentElement;
+            if (selector.includes('highlight')) {
+                parentElement.insertBefore(newStructure, codeElement.nextSibling);
+                parentElement.removeChild(codeElement);
+            } else {
+                parentElement.parentElement.replaceChild(newStructure, parentElement);
+            }
+        });
+    };
+
+    handleCodeElements('pre.notranslate > code.notranslate');
+    handleCodeElements('div.highlight > pre.notranslate');
+
+    let currentFeedback = null;
+    document.querySelectorAll('clipboard-copy').forEach(copyButton => {
+        copyButton.addEventListener('click', () => {
+            const codeContent = copyButton.closest('.snippet-clipboard-content').innerText;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = codeContent;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            const copyIcon = copyButton.querySelector('.octicon-copy');
+            const checkIcon = copyButton.querySelector('.octicon-check');
+            const copyFeedback = copyButton.nextElementSibling;
+
+            if (currentFeedback && currentFeedback !== copyFeedback) {currentFeedback.style.display = 'none';}
+            currentFeedback = copyFeedback;
+
+            copyIcon.classList.add('d-none');
+            checkIcon.classList.remove('d-none');
+            copyFeedback.style.display = 'block';
+            copyButton.style.borderColor = 'var(--color-success-fg)';
+
+            setTimeout(() => {
+                copyIcon.classList.remove('d-none');
+                checkIcon.classList.add('d-none');
+                copyFeedback.style.display = 'none';
+                copyButton.style.borderColor = '';
+            }, 2000);
+        });
+    });
+});
 
 </script>
 
