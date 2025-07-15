@@ -614,3 +614,206 @@ public class NSAccessTokenGenerator {
 }
 
 ```
+
+
+
+
+
+
+```
+
+@Component
+public class OAuth10aServiceImpl implements OAuthService {
+    private static final String VERSION = "1.0";
+    private OAuthConfig config;
+    private DefaultApi10a api;
+
+    public OAuth10aServiceImpl(DefaultApi10a api, OAuthConfig config) {
+        this.api = api;
+        this.config = config;
+    }
+
+    public Token getRequestToken(int timeout, TimeUnit unit) {
+        return this.getRequestToken(new OAuth10aServiceImpl.TimeoutTuner(timeout, unit));
+    }
+
+    public Token getRequestToken() {
+        return this.getRequestToken(2, TimeUnit.SECONDS);
+    }
+
+    public Token getRequestToken(RequestTuner tuner) {
+        this.config.log("obtaining request token from " + this.api.getRequestTokenEndpoint());
+        OAuthRequest request = new OAuthRequest(this.api.getRequestTokenVerb(), this.api.getRequestTokenEndpoint());
+        this.config.log("setting oauth_callback to " + this.config.getCallback());
+        request.addOAuthParameter("oauth_callback", this.config.getCallback());
+        this.addOAuthParams(request, OAuthConstants.EMPTY_TOKEN);
+        this.appendSignature(request);
+        this.config.log("sending request...");
+        Response response = request.send(tuner);
+        String body = response.getBody();
+        this.config.log("response status code: " + response.getCode());
+        this.config.log("response body: " + body);
+        return this.api.getRequestTokenExtractor().extract(body);
+    }
+
+    private void addOAuthParams(OAuthRequest request, Token token, String signatureMethod) {
+        request.addOAuthParameter("oauth_consumer_key", this.config.getApiKey());
+        if (!token.isEmpty()) {
+            request.addOAuthParameter("oauth_token", token.getToken());
+        }
+        request.addOAuthParameter("oauth_signature_method", signatureMethod);
+        request.addOAuthParameter("oauth_timestamp", this.api.getTimestampService().getTimestampInSeconds());
+        request.addOAuthParameter("oauth_nonce", this.api.getTimestampService().getNonce());
+        request.addOAuthParameter("oauth_version", this.getVersion());
+        request.addOAuthParameter("oauth_signature", this.getSignature(request, token));
+        if (this.config.hasScope()) {
+            request.addOAuthParameter("scope", this.config.getScope());
+        }
+
+        this.config.log("appended additional OAuth parameters: " + MapUtils.toString(request.getOauthParameters()));
+
+    }
+
+    private void addOAuthParams(OAuthRequest request, Token token) {
+
+
+        request.addOAuthParameter("oauth_consumer_key", this.config.getApiKey());
+        if (!token.isEmpty()) {
+            request.addOAuthParameter("oauth_token", token.getToken());
+        }
+        request.addOAuthParameter("oauth_signature_method", this.api.getSignatureService().getSignatureMethod());
+        request.addOAuthParameter("oauth_timestamp", this.api.getTimestampService().getTimestampInSeconds());
+        request.addOAuthParameter("oauth_nonce", this.api.getTimestampService().getNonce());
+        request.addOAuthParameter("oauth_version", this.getVersion());
+        request.addOAuthParameter("oauth_signature", this.getSignature(request, token));
+
+        if (this.config.hasScope()) {
+            request.addOAuthParameter("scope", this.config.getScope());
+        }
+        this.config.log("appended additional OAuth parameters: " + MapUtils.toString(request.getOauthParameters()));
+    }
+
+    public Token getAccessToken(Token requestToken, Verifier verifier, int timeout, TimeUnit unit) {
+        return this.getAccessToken(requestToken, verifier, new OAuth10aServiceImpl.TimeoutTuner(timeout, unit));
+    }
+
+    public Token getAccessToken(Token requestToken, Verifier verifier) {
+        return this.getAccessToken(requestToken, verifier, 2, TimeUnit.SECONDS);
+    }
+
+    public Token getAccessToken(Token requestToken, Verifier verifier, RequestTuner tuner) {
+        this.config.log("obtaining access token from " + this.api.getAccessTokenEndpoint());
+        OAuthRequest request = new OAuthRequest(this.api.getAccessTokenVerb(), this.api.getAccessTokenEndpoint());
+        request.addOAuthParameter("oauth_token", requestToken.getToken());
+        request.addOAuthParameter("oauth_verifier", verifier.getValue());
+        this.config.log("setting token to: " + requestToken + " and verifier to: " + verifier);
+        this.addOAuthParams(request, requestToken);
+        this.appendSignature(request);
+        this.config.log("sending request...");
+        Response response = request.send(tuner);
+        String body = response.getBody();
+        this.config.log("response status code: " + response.getCode());
+        this.config.log("response body: " + body);
+        return this.api.getAccessTokenExtractor().extract(body);
+    }
+
+    public void signRequest(Token token, OAuthRequest request) {
+        this.config.log("signing request: " + request.getCompleteUrl());
+        if (!token.isEmpty()) {
+            request.addOAuthParameter("oauth_token", token.getToken());
+        }
+
+        this.config.log("setting token to: " + token);
+        this.addOAuthParams(request, token);
+        this.appendSignature(request);
+    }
+
+    @Override
+    public void signRequest(Token token, OAuthRequest request, String signatureMethod) {
+        this.config.log("signing request: " + request.getCompleteUrl());
+        this.config.log("setting token to: " + token);
+        if(!signatureMethod.isEmpty()) {
+            this.addOAuthParams(request, token, signatureMethod);
+        } else {
+            this.addOAuthParams(request, token);
+        }
+        this.appendSignature(request);
+    }
+
+    public String getVersion() {
+        return "1.0";
+    }
+
+    public String getAuthorizationUrl(Token requestToken) {
+        return this.api.getAuthorizationUrl(requestToken);
+    }
+
+    private String getSignature(OAuthRequest request, Token token) {
+        this.config.log("generating signature...");
+        this.config.log("using base64 encoder: " + Base64Encoder.type());
+        String baseString = this.api.getBaseStringExtractor().extract(request);
+        String signature = getSignature(baseString, this.config.getApiSecret(), token.getSecret());
+
+
+        this.config.log("base string is: " + baseString);
+        this.config.log("signature is: " + signature);
+        return signature;
+    }
+
+    public String getSignature(String baseString, String apiSecret, String tokenSecret) {
+        try {
+            Preconditions.checkEmptyString(baseString, "Base string cant be null or empty string");
+            Preconditions.checkEmptyString(apiSecret, "Api secret cant be null or empty string");
+            return this.doSign(baseString, OAuthEncoder.encode(apiSecret) + '&' + OAuthEncoder.encode(tokenSecret));
+        } catch (Exception var5) {
+            throw new OAuthSignatureException(baseString, var5);
+        }
+    }
+
+    private String doSign(String toSign, String keyString) throws Exception {
+        SecretKeySpec key = new SecretKeySpec(keyString.getBytes("UTF-8"), "HmacSHA256");
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(key);
+        byte[] bytes = mac.doFinal(toSign.getBytes("UTF-8"));
+        return this.bytesToBase64String(bytes).replace("\r\n", "");
+    }
+
+    private String bytesToBase64String(byte[] bytes) {
+        return Base64Encoder.getInstance().encode(bytes);
+    }
+
+
+    private void appendSignature(OAuthRequest request) {
+        switch(this.config.getSignatureType()) {
+            case Header:
+                this.config.log("using Http Header signature");
+                String oauthHeader = this.api.getHeaderExtractor().extract(request);
+                request.addHeader("Authorization", oauthHeader);
+                break;
+            case QueryString:
+                this.config.log("using Querystring signature");
+                Iterator var3 = request.getOauthParameters().entrySet().iterator();
+
+                while(var3.hasNext()) {
+                    Entry<String, String> entry = (Entry)var3.next();
+                    request.addQuerystringParameter((String)entry.getKey(), (String)entry.getValue());
+                }
+        }
+
+    }
+
+    private static class TimeoutTuner extends RequestTuner {
+        private final int duration;
+        private final TimeUnit unit;
+
+        public TimeoutTuner(int duration, TimeUnit unit) {
+            this.duration = duration;
+            this.unit = unit;
+        }
+
+        public void tune(Request request) {
+            request.setReadTimeout(this.duration, this.unit);
+        }
+    }
+}
+```
