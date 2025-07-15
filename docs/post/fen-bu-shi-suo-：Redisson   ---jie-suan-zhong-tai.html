@@ -274,7 +274,6 @@ end
 <p>为了最大限度地提高Redisson分布式锁的可靠性和有效性，请考虑以下最佳实践：</p>
 <ul>
 <li><strong>选择正确的锁类型：</strong> 根据应用程序的特定一致性、公平性、和并发性要求，仔细选择合适的Redisson锁类型（RLock、FairLock、MultiLock、ReadWriteLock）。</li>
-<li><strong>实施健壮的重试逻辑：</strong> 当<code class="notranslate">tryLock()</code>未能立即获取锁时，实施带有指数退避的重试机制。这可以防止“惊群效应”问题，即许多客户端反复争夺锁，并允许系统有时间稳定。</li>
 <li><strong>监控和记录锁事件：</strong> 对锁获取尝试、成功、失败和释放实施全面的日志记录。监控与锁争用、平均锁持有时间和看门狗续约相关的指标，以主动识别性能瓶颈或潜在问题。</li>
 <li><strong>保持关键代码段简短：</strong> 设计应用程序以使关键代码段（受锁保护的部分）尽可能简短高效。这可以最大限度地缩短锁持有时间，减少争用并提高整体系统吞吐量。</li>
 <li><strong>优雅地处理异常：</strong> 始终确保在<code class="notranslate">finally</code>块或类似结构中释放锁，以保证即使在关键代码段内发生异常，锁也会被释放，从而防止死锁。</li>
