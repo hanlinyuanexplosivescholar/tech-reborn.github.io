@@ -141,3 +141,14 @@ MySQL 8.0引入的`EXPLAIN ANALYZE`是`EXPLAIN`的增强版。它会实际执行
 MySQL索引是提升数据库性能的强大工具，但其有效性并非理所当然。理解索引失效的常见场景，如违反最左前缀原则、在索引列上进行操作、隐式类型转换、前导模糊匹配、低选择性列、负向查询条件以及优化器判断失误等，是编写高效SQL和进行数据库优化的关键。
 
 掌握`EXPLAIN`和`EXPLAIN ANALYZE`等诊断工具，结合索引设计和SQL编写的最佳实践，能够有效识别并解决索引失效问题。数据库性能优化是一个持续学习和实践的过程。通过不断地分析、调整和验证，可以确保MySQL数据库在不断变化的业务需求下，始终保持高效、稳定的运行。
+
+
+
+
+
+附1：聚簇索引的索引结构
+
+<img width="1920" height="1001" alt="Image" src="https://github.com/user-attachments/assets/e31d3ec5-ed3e-4acd-ab64-55da88a95d2f" />
+
+附2：非聚簇索引的索引结构
+<img width="1920" height="1020" alt="Image" src="https://github.com/user-attachments/assets/142b6967-b26e-493a-801e-4af987f62e43" />

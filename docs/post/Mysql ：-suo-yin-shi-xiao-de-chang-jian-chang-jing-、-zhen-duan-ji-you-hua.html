@@ -210,7 +210,11 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
 <p>数据库性能优化是一个持续迭代的过程。数据量、查询模式和业务需求都在不断变化。因此，索引设计和SQL优化需要是一个持续迭代的过程。通过诊断工具（<code class="notranslate">EXPLAIN</code>）发现问题，理解其背后的优化器决策逻辑，然后运用最佳实践进行调整，再通过诊断工具验证效果，形成一个闭环。这种持续的监控和调整是确保数据库性能长期稳定的关键。</p>
 <h2>总结：持续优化，提升数据库性能</h2>
 <p>MySQL索引是提升数据库性能的强大工具，但其有效性并非理所当然。理解索引失效的常见场景，如违反最左前缀原则、在索引列上进行操作、隐式类型转换、前导模糊匹配、低选择性列、负向查询条件以及优化器判断失误等，是编写高效SQL和进行数据库优化的关键。</p>
-<p>掌握<code class="notranslate">EXPLAIN</code>和<code class="notranslate">EXPLAIN ANALYZE</code>等诊断工具，结合索引设计和SQL编写的最佳实践，能够有效识别并解决索引失效问题。数据库性能优化是一个持续学习和实践的过程。通过不断地分析、调整和验证，可以确保MySQL数据库在不断变化的业务需求下，始终保持高效、稳定的运行。</p></div>
+<p>掌握<code class="notranslate">EXPLAIN</code>和<code class="notranslate">EXPLAIN ANALYZE</code>等诊断工具，结合索引设计和SQL编写的最佳实践，能够有效识别并解决索引失效问题。数据库性能优化是一个持续学习和实践的过程。通过不断地分析、调整和验证，可以确保MySQL数据库在不断变化的业务需求下，始终保持高效、稳定的运行。</p>
+<p>附1：聚簇索引的索引结构</p>
+<p><a target="_blank" rel="noopener noreferrer" href="https://github.com/user-attachments/assets/e31d3ec5-ed3e-4acd-ab64-55da88a95d2f"><img width="1920" height="1001" alt="Image" src="https://github.com/user-attachments/assets/e31d3ec5-ed3e-4acd-ab64-55da88a95d2f" style="max-width: 100%; height: auto; max-height: 1001px;"></a></p>
+<p>附2：非聚簇索引的索引结构<br>
+<a target="_blank" rel="noopener noreferrer" href="https://github.com/user-attachments/assets/142b6967-b26e-493a-801e-4af987f62e43"><img width="1920" height="1020" alt="Image" src="https://github.com/user-attachments/assets/142b6967-b26e-493a-801e-4af987f62e43" style="max-width: 100%; height: auto; max-height: 1020px;"></a></p></div>
 <div style="font-size:small;margin-top:8px;float:right;"></div>
 
 <button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
