@@ -326,7 +326,7 @@ OAuth 2.1的出现，标志着OAuth协议在安全性上的又一次重要演进
 
 
 
-附1：部分生产环境代码
+附1：部分生产环境代码，删除了关键信息
 ```
 
 
@@ -338,14 +338,7 @@ OAuth 2.1的出现，标志着OAuth协议在安全性上的又一次重要演进
 @Slf4j
 public class NSAccessTokenGenerator {
 
-    //    private static final String CONSUMER_KEY = "18b87bb81520b848f45dc09ae037e909e750ce186ad4c22e8dd8c211a44fc906";
-//    private static final String CONSUMER_SECRET = "beef57fe117bb7a4314f3704a2d8d00f38e6df0e326741dad4afda5e68a2f05a";
-//    private static final String TOKEN_ID = "333b87088f9b2516f069057aeacf665e20f69326428e13d5a757e5ed44b0b0e0";
-//    private static final String TOKEN_SECRET = "967f5300e15d2c49d008cca288f6776e385309f1afb8daef0ad4b8e8f3f2448c";
-    private static final String REST_URL = "https://6740337-sb1.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=302&deploy=1";
-    //    private static final String REALM = "6740337_SB1";
-//    private static final String CONTENT_TYPE = "Content-Type";
-//    private static final String APP_JSON = "application/json";
+    private static final String REST_URL = "";
     private static final String EMPTY_JSON_PAYLOAD = "{" +
             "\"datefrom\": \"2015-03-09 12:24:01\"" +
             "}";
@@ -434,14 +427,6 @@ public class NSAccessTokenGenerator {
 
     /**
      * 与请求的顺序有关，注意调用的方法是 256
-     * Authorization:
-     * OAuth realm="12345",
-     * oauth_consumer_key="4a3ff6c251a55057bb1e62d8dc8998a0366e88f3a8fe735265fc425368b0f154",
-     * oauth_token="52cfe88fecf2e2b74e833e7dfc4cae79ff44c3ca9f696d61e2a7eac6c8357c3c",
-     * oauth_nonce="qUwlmPvtGCS4sHJe8F7x",
-     * oauth_timestamp="1462453273",
-     * oauth_signature_method="HMAC-SHA256", oauth_version="1.0",
-     * oauth_signature="8PI9lIYxUmUONjxEFJUSMD9oOmc%3D"
      */
     public static Response callWithHttpPost() {
         OAuthRequest request = new OAuthRequest(Verb.POST, REST_URL);
@@ -455,15 +440,6 @@ public class NSAccessTokenGenerator {
             accessToken =getToken();
         }
         service.signRequest(accessToken, request, "HMAC-SHA256");
-//        request.addHeader("Connection", "keep-alive");
-//        request.addHeader("Accept", "*/*");
-//        request.addHeader("Host", "7048174-sb1.restlets.api.netsuite.com");
-//        request.addHeader("Content-Length", String.valueOf(EMPTY_JSON_PAYLOAD.length()));
-//        request.addHeader("User-Agent", "Mozilla/5.0");
-
-//        Map<String, String> headers =
-//                request.getHeaders();
-//        log.info(headers.get("Authorization") + ";;;;;;");
         return request.send();
     }
 
@@ -484,15 +460,6 @@ public class NSAccessTokenGenerator {
             accessToken =getToken();
         }
         service.signRequest(accessToken, request, "HMAC-SHA256");
-//        request.addHeader("Connection", "keep-alive");
-//        request.addHeader("Accept", "*/*");
-//        request.addHeader("Host", "7048174-sb1.restlets.api.netsuite.com");
-//        request.addHeader("Content-Length", String.valueOf(EMPTY_JSON_PAYLOAD.length()));
-//        request.addHeader("User-Agent", "Mozilla/5.0");
-
-//        Map<String, String> headers =
-//                request.getHeaders();
-//        log.info(headers.get("Authorization") + ";;;;;;");
         return request.send();
     }
 
@@ -519,15 +486,6 @@ public class NSAccessTokenGenerator {
             accessToken =getTokenProd();
         }
         service.signRequest(accessToken, request, "HMAC-SHA256");
-//        request.addHeader("Connection", "keep-alive");
-//        request.addHeader("Accept", "*/*");
-//        request.addHeader("Host", "7048174-sb1.restlets.api.netsuite.com");
-//        request.addHeader("Content-Length", String.valueOf(EMPTY_JSON_PAYLOAD.length()));
-//        request.addHeader("User-Agent", "Mozilla/5.0");
-
-//        Map<String, String> headers =
-//                request.getHeaders();
-//        log.info(headers.get("Authorization") + ";;;;;;");
         return request.send();
     }
 

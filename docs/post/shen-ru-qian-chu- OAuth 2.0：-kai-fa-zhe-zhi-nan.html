@@ -391,7 +391,7 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
 <p>然而，OAuth 2.0的强大功能也伴随着对正确实现和严格遵循安全最佳实践的依赖。强制使用HTTPS、对客户端凭证和用户令牌的严格保护、对重定向URI的精确验证、利用 <code class="notranslate">state</code> 参数防御CSRF攻击以及采用增量授权，都是确保OAuth 2.0部署安全的关键要素。这些实践共同构筑了一道防线，抵御了常见的网络攻击和配置错误。</p>
 <p>OAuth 2.1的出现，标志着OAuth协议在安全性上的又一次重要演进。通过将PKCE强制应用于所有授权码流程、移除隐式授权和资源所有者密码凭证授权等不安全或不推荐的授权类型，并加强了重定向URI匹配和Bearer Token的使用规范，OAuth 2.1为开发者提供了更清晰、更安全的实施基线。这不仅简化了开发者的选择，也促使整个生态系统向更强的安全标准靠拢。</p>
 <p>对于开发者而言，深入理解OAuth 2.0的核心概念、角色、授权类型及其演进，并严格遵循其安全最佳实践，是构建现代化、安全、可信赖应用程序的基石。随着数字身份和数据共享的日益复杂，OAuth 2.0及其后续演进将继续在保护用户隐私和数据安全方面发挥不可或缺的作用。</p>
-<p>附1：部分生产环境代码</p>
+<p>附1：部分生产环境代码，删除了关键信息</p>
 <pre class="notranslate"><code class="notranslate">
 
 /**
@@ -402,14 +402,7 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
 @Slf4j
 public class NSAccessTokenGenerator {
 
-    //    private static final String CONSUMER_KEY = "18b87bb81520b848f45dc09ae037e909e750ce186ad4c22e8dd8c211a44fc906";
-//    private static final String CONSUMER_SECRET = "beef57fe117bb7a4314f3704a2d8d00f38e6df0e326741dad4afda5e68a2f05a";
-//    private static final String TOKEN_ID = "333b87088f9b2516f069057aeacf665e20f69326428e13d5a757e5ed44b0b0e0";
-//    private static final String TOKEN_SECRET = "967f5300e15d2c49d008cca288f6776e385309f1afb8daef0ad4b8e8f3f2448c";
-    private static final String REST_URL = "https://6740337-sb1.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=302&amp;deploy=1";
-    //    private static final String REALM = "6740337_SB1";
-//    private static final String CONTENT_TYPE = "Content-Type";
-//    private static final String APP_JSON = "application/json";
+    private static final String REST_URL = "";
     private static final String EMPTY_JSON_PAYLOAD = "{" +
             "\"datefrom\": \"2015-03-09 12:24:01\"" +
             "}";
@@ -498,14 +491,6 @@ public class NSAccessTokenGenerator {
 
     /**
      * 与请求的顺序有关，注意调用的方法是 256
-     * Authorization:
-     * OAuth realm="12345",
-     * oauth_consumer_key="4a3ff6c251a55057bb1e62d8dc8998a0366e88f3a8fe735265fc425368b0f154",
-     * oauth_token="52cfe88fecf2e2b74e833e7dfc4cae79ff44c3ca9f696d61e2a7eac6c8357c3c",
-     * oauth_nonce="qUwlmPvtGCS4sHJe8F7x",
-     * oauth_timestamp="1462453273",
-     * oauth_signature_method="HMAC-SHA256", oauth_version="1.0",
-     * oauth_signature="8PI9lIYxUmUONjxEFJUSMD9oOmc%3D"
      */
     public static Response callWithHttpPost() {
         OAuthRequest request = new OAuthRequest(Verb.POST, REST_URL);
@@ -519,15 +504,6 @@ public class NSAccessTokenGenerator {
             accessToken =getToken();
         }
         service.signRequest(accessToken, request, "HMAC-SHA256");
-//        request.addHeader("Connection", "keep-alive");
-//        request.addHeader("Accept", "*/*");
-//        request.addHeader("Host", "7048174-sb1.restlets.api.netsuite.com");
-//        request.addHeader("Content-Length", String.valueOf(EMPTY_JSON_PAYLOAD.length()));
-//        request.addHeader("User-Agent", "Mozilla/5.0");
-
-//        Map&lt;String, String&gt; headers =
-//                request.getHeaders();
-//        log.info(headers.get("Authorization") + ";;;;;;");
         return request.send();
     }
 
@@ -548,15 +524,6 @@ public class NSAccessTokenGenerator {
             accessToken =getToken();
         }
         service.signRequest(accessToken, request, "HMAC-SHA256");
-//        request.addHeader("Connection", "keep-alive");
-//        request.addHeader("Accept", "*/*");
-//        request.addHeader("Host", "7048174-sb1.restlets.api.netsuite.com");
-//        request.addHeader("Content-Length", String.valueOf(EMPTY_JSON_PAYLOAD.length()));
-//        request.addHeader("User-Agent", "Mozilla/5.0");
-
-//        Map&lt;String, String&gt; headers =
-//                request.getHeaders();
-//        log.info(headers.get("Authorization") + ";;;;;;");
         return request.send();
     }
 
@@ -583,15 +550,6 @@ public class NSAccessTokenGenerator {
             accessToken =getTokenProd();
         }
         service.signRequest(accessToken, request, "HMAC-SHA256");
-//        request.addHeader("Connection", "keep-alive");
-//        request.addHeader("Accept", "*/*");
-//        request.addHeader("Host", "7048174-sb1.restlets.api.netsuite.com");
-//        request.addHeader("Content-Length", String.valueOf(EMPTY_JSON_PAYLOAD.length()));
-//        request.addHeader("User-Agent", "Mozilla/5.0");
-
-//        Map&lt;String, String&gt; headers =
-//                request.getHeaders();
-//        log.info(headers.get("Authorization") + ";;;;;;");
         return request.send();
     }
 
