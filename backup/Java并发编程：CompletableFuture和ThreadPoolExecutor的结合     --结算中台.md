@@ -63,3 +63,7 @@ public class PushAwsTask {
 
 }
 ```
+
+
+附1：更复杂的需要先后关系的异步场景可参考
+https://tech.meituan.com/2022/05/12/principles-and-practices-of-completablefuture.html
