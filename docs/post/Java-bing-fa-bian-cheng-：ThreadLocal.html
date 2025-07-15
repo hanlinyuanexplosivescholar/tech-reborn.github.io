@@ -10,9 +10,13 @@
         let theme = localStorage.getItem("meek_theme") || "light";
         document.documentElement.setAttribute("data-color-mode", theme);
     </script>
-<meta name="description" content="">
+<meta name="description" content="## 引言
+
+在 Java 多线程编程的复杂世界中，数据管理和线程安全是开发者必须面对的核心挑战。">
 <meta property="og:title" content="Java并发编程：ThreadLocal">
-<meta property="og:description" content="">
+<meta property="og:description" content="## 引言
+
+在 Java 多线程编程的复杂世界中，数据管理和线程安全是开发者必须面对的核心挑战。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/Java-bing-fa-bian-cheng-%EF%BC%9AThreadLocal.html">
 <meta property="og:image" content="https://avatars.githubusercontent.com/u/68176923?v=4">
@@ -41,7 +45,17 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
     body {padding: 8px;}
     .postTitle{font-size:24px;}
 }
-
+.copy-feedback {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 50px;
+    color: var(--color-fg-on-emphasis);
+    background-color: var(--color-fg-muted);
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 12px;
+}
 </style>
 
 
@@ -73,7 +87,446 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
 </div>
 </div>
     <div id="content">
-<div class="markdown-body" id="postBody"></div>
+<div class="markdown-body" id="postBody"><h2>引言</h2>
+<p>在 Java 多线程编程的复杂世界中，数据管理和线程安全是开发者必须面对的核心挑战。共享数据若处理不当，极易引发竞态条件、数据损坏乃至死锁等严重问题。为了应对这些挑战，Java 提供了多种并发工具，其中 <code class="notranslate">ThreadLocal</code> 以其独特的机制，为线程数据隔离提供了一种优雅而高效的解决方案。</p>
+<h3>什么是 ThreadLocal？</h3>
+<p><code class="notranslate">ThreadLocal</code> 是 Java 语言提供的一个强大类，其核心设计理念是为多线程环境中的数据管理引入“线程局部作用域”的概念。这意味着，当一个变量被声明为 <code class="notranslate">ThreadLocal</code> 类型时，每个访问该变量的线程都将拥有其自身独立、唯一的副本。即使多个线程同时执行相同的代码并引用同一个 <code class="notranslate">ThreadLocal</code> 实例，它们也无法相互访问或干扰彼此的数据。</p>
+<p>与传统意义上的全局变量不同，全局变量在所有线程之间共享，可能导致数据冲突。而 <code class="notranslate">ThreadLocal</code> 变量则确保了数据对单个线程的严格隔离性，从而在多线程应用中有效地维护了数据完整性和线程安全性。这种隔离机制使得开发者能够更专注于业务逻辑，而无需为特定数据操心复杂的同步问题。</p>
+<h3>为什么在多线程应用中它如此重要？</h3>
+<p>在高度并发的多线程应用中，数据隔离的需求显得尤为重要。传统上，为了防止多个线程同时修改共享数据而引发冲突，开发者通常会依赖于 <code class="notranslate">synchronized</code> 关键字、<code class="notranslate">ReentrantLock</code> 等显式同步机制。然而，这些同步手段虽然能保证线程安全，却可能引入显著的性能开销，例如锁竞争、频繁的上下文切换，甚至在设计不当时导致应用程序死锁。</p>
+<p><code class="notranslate">ThreadLocal</code> 提供了一种更轻量级的替代方案。它允许数据为每个线程单独维护，从而避免了显式加锁所带来的性能损耗。这种机制在线程需要维护自身状态而又不希望干扰其他线程的场景中显得尤为宝贵。例如，在 Web 应用程序中，<code class="notranslate">ThreadLocal</code> 可以被用来存储与每个用户请求相关的会话信息，确保每个请求的数据独立处理，互不影响。</p>
+<p><code class="notranslate">ThreadLocal</code> 的设计巧妙地平衡了局部变量和全局变量的特性。局部变量的生命周期和作用域通常被限制在方法内部，而全局变量则在整个应用程序的生命周期内都可访问。<code class="notranslate">ThreadLocal</code> 变量虽然是“线程受限”的，即其他线程无法访问其数据，但它们在当前线程的整个生命周期内（甚至跨越不同的方法调用）都保持可用。这种独特的性质使得在深层方法调用栈中传递上下文信息变得异常简洁，开发者无需将数据显式地作为方法参数层层传递，从而显著简化了方法签名。这种能力在复杂的、多层架构的应用程序（如 Web 应用）中尤其有价值，因为它允许应用程序在不污染方法签名的情况下，隐式地在线程内部传递上下文，极大地提升了代码的清晰度和可维护性。</p>
+<h2>ThreadLocal 的核心概念与工作原理</h2>
+<p>理解 <code class="notranslate">ThreadLocal</code> 的强大之处，首先需要深入其核心概念和内部工作机制。</p>
+<h3>每个线程拥有独立副本</h3>
+<p><code class="notranslate">ThreadLocal</code> 的核心在于它为每个访问它的线程提供了一个变量的独立实例。这意味着，当一个线程调用 <code class="notranslate">ThreadLocal</code> 对象的 <code class="notranslate">get()</code> 或 <code class="notranslate">set()</code> 方法时，它操作的实际上是自己专属的、隔离的变量副本。这种隔离性是 <code class="notranslate">ThreadLocal</code> 能够实现线程安全的关键。即使多个线程同时执行相同的代码并引用同一个 <code class="notranslate">ThreadLocal</code> 变量，它们也无法互相看到或修改彼此的值。每个线程都像在一个独立沙箱中操作自己的数据，互不干扰。</p>
+<h3>内部机制揭秘：ThreadLocalMap 与弱引用</h3>
+<p>这种看似魔法般的隔离性并非凭空产生，而是由 Java 内部精密的线程机制精心维护的。其核心在于每个 <code class="notranslate">java.lang.Thread</code> 对象都隐式地持有一个 <code class="notranslate">ThreadLocal.ThreadLocalMap</code> 实例的引用。</p>
+<p><code class="notranslate">ThreadLocalMap</code> 是一个专门为 <code class="notranslate">ThreadLocal</code> 变量优化的自定义哈希表，其内部实现与标准的 <code class="notranslate">HashMap</code> 有所不同。在这个 <code class="notranslate">Map</code> 中，每个条目都以 <code class="notranslate">ThreadLocal</code> 实例本身作为 ​<em>键</em>​，并以该 <code class="notranslate">ThreadLocal</code> 变量在当前线程中的 <em>值</em> 作为其关联的 ​<em>值</em>​。</p>
+<p>一个至关重要的内部机制是，<code class="notranslate">ThreadLocalMap</code> 中的键（即 <code class="notranslate">ThreadLocal</code> 实例）是使用 <em>弱引用</em> (Weak Reference) 存储的。这意味着，如果应用程序代码中不再有对某个 <code class="notranslate">ThreadLocal</code> 实例的强引用，那么即使 <code class="notranslate">ThreadLocalMap</code> 中仍然有它的弱引用，垃圾收集器也可能回收这个 <code class="notranslate">ThreadLocal</code> 实例。这是为了防止 <code class="notranslate">ThreadLocal</code> 对象本身造成内存泄漏而做出的设计选择。当一个 <code class="notranslate">ThreadLocal</code> 变量被访问时，当前线程会从其 <code class="notranslate">ThreadLocalMap</code> 中，使用 <code class="notranslate">ThreadLocal</code> 实例作为键来检索其对应的值。由于每个线程都有其独立的 <code class="notranslate">ThreadLocalMap</code> 实例，在一个线程中对 <code class="notranslate">ThreadLocal</code> 变量所做的更改不会影响其他线程中这些变量的值，从而保证了数据的隔离性。</p>
+<p>然而，需要注意的是，弱引用并非内存泄漏的万能药。尽管 <code class="notranslate">ThreadLocalMap</code> 使用弱引用来存储 <code class="notranslate">ThreadLocal</code> 实例作为键，旨在防止 <code class="notranslate">ThreadLocal</code> 对象本身在不再被强引用时阻碍垃圾回收，但 <code class="notranslate">ThreadLocalMap</code> 中存储的 ​<em>值</em>​（即与 <code class="notranslate">ThreadLocal</code> 实例关联的数据）是强引用的。这意味着，如果 <code class="notranslate">ThreadLocal</code> 键被垃圾回收（因为它是弱引用），那么 <code class="notranslate">ThreadLocalMap</code> 中的相应条目会变成一个“陈旧”条目，其键为 <code class="notranslate">null</code>，但其值可能仍然是非 <code class="notranslate">null</code> 的。如果该线程（特别是在线程池中被复用的线程）继续存活且没有调用 <code class="notranslate">remove()</code> 方法来清理这个条目，那么这个值将永远无法被垃圾回收，从而导致内存泄漏。因此，深入理解弱引用机制是至关重要的，但同样重要的是要认识到它在处理 <code class="notranslate">ThreadLocal</code><em>值</em> 方面的局限性。这直接引出了“始终调用 <code class="notranslate">remove()</code>”这一最关键的最佳实践。</p>
+<h2>ThreadLocal 解决了哪些问题？</h2>
+<p><code class="notranslate">ThreadLocal</code> 在多线程环境中提供了独特的优势，解决了传统并发编程中一些常见且棘手的问题。</p>
+<h3>简化线程安全</h3>
+<p>通过为每个线程提供独立的数据存储，<code class="notranslate">ThreadLocal</code> 从根本上消除了因并发修改而导致的数据损坏风险。它允许每个线程维护自己的数据，而无需显式同步，从而有效地避免了竞态条件。这种机制使得开发者能够编写更简洁、更安全的并发代码。</p>
+<h3>避免数据竞争</h3>
+<p>由于每个线程都有自己的数据副本，因此线程之间不会出现对共享资源的竞争。这意味着，当多个线程需要访问相同类型的数据但各自独立操作时，<code class="notranslate">ThreadLocal</code> 消除了同步的必要性，这在高度并发的应用程序中能显著提升性能。</p>
+<h3>减少同步开销</h3>
+<p>传统的同步机制，如 <code class="notranslate">synchronized</code> 块或 <code class="notranslate">ReentrantLock</code>，会引入性能开销，例如锁竞争、上下文切换和内存屏障。<code class="notranslate">ThreadLocal</code> 通过提供一种更轻量级、更高效的替代方案，减少了对这些同步机制的需求。它允许线程在没有锁的情况下安全地操作其私有数据，从而避免了与锁相关的性能瓶颈。</p>
+<h3>在线程生命周期内维护状态</h3>
+<p><code class="notranslate">ThreadLocal</code> 变量的另一个重要特性是它们在同一线程内的不同方法调用之间保持持久性。这意味着，一旦一个线程为一个 <code class="notranslate">ThreadLocal</code> 变量设置了值，该值在该线程的整个生命周期中都可以被访问，而无需将其作为方法参数显式地在方法之间传递。这极大地简化了代码，尤其是在深层方法调用栈中需要访问上下文信息时。</p>
+<h3>处理非线程安全对象</h3>
+<p>一个经典的 <code class="notranslate">ThreadLocal</code> 用例是处理那些本身非线程安全的工具类，例如 <code class="notranslate">SimpleDateFormat</code>。<code class="notranslate">SimpleDateFormat</code> 内部的状态在多线程环境下是共享且可变的，因此直接在多个线程中共享同一个实例会导致不正确的结果。为了解决这个问题，开发者通常有两种选择：同步访问单个 <code class="notranslate">SimpleDateFormat</code> 实例（这会引入锁竞争，导致性能瓶失）或每次都创建新的实例（这会因频繁的对象创建和销毁而效率低下）。<code class="notranslate">ThreadLocal</code> 提供了一个优雅的解决方案：允许每个线程拥有自己的 <code class="notranslate">SimpleDateFormat</code> 实例，从而确保了安全性和效率。</p>
+<p>尽管 <code class="notranslate">ThreadLocal</code> 通过避免锁机制显著提升了性能，但其一个公认的缺点是调试难度增加。这是因为数据被隔离在每个线程内部，如果没有精心管理，很难检查全局状态或追踪数据在线程间的流向。当应用程序出现问题时，定位哪个线程的 <code class="notranslate">ThreadLocal</code> 状态导致了问题会变得复杂。因此，尽管 <code class="notranslate">ThreadLocal</code> 带来了性能优势，开发者必须意识到它可能带来的调试复杂性。这要求在使用 <code class="notranslate">ThreadLocal</code> 时，必须有清晰的文档和严格的规范，特别是关于其生命周期管理和清理，以避免难以追踪的隐蔽错误。</p>
+<h2>ThreadLocal 的基本用法</h2>
+<p>掌握 <code class="notranslate">ThreadLocal</code> 的使用相对简单，主要涉及其几个核心方法。</p>
+<h3>创建 ThreadLocal 变量</h3>
+<p>通常，<code class="notranslate">ThreadLocal</code> 变量被声明为 <code class="notranslate">private static final</code>，以确保它是一个在整个应用程序生命周期内都存在的单例，并且其引用不会改变。</p>
+<p>示例：</p>
+<p><strong>Java</strong></p>
+<pre class="notranslate"><code class="notranslate">private static final ThreadLocal&lt;Integer&gt; threadLocalValue = new ThreadLocal&lt;&gt;();
+</code></pre>
+<p>建议使用泛型来确保类型安全，这样可以避免不必要的类型转换，并提高代码的可读性：</p>
+<p><strong>Java</strong></p>
+<pre class="notranslate"><code class="notranslate">private static final ThreadLocal&lt;String&gt; myThreadLocal = new ThreadLocal&lt;String&gt;();
+</code></pre>
+<h3><code class="notranslate">set()</code> 方法：设置线程局部变量的值</h3>
+<p>使用 <code class="notranslate">set(T value)</code> 方法可以为当前线程的 <code class="notranslate">ThreadLocal</code> 变量设置一个值。每个线程调用此方法时，都会在自己的 <code class="notranslate">ThreadLocalMap</code> 中存储一份独立的副本。</p>
+<p>示例：</p>
+<p><strong>Java</strong></p>
+<pre class="notranslate"><code class="notranslate">threadLocalValue.set(randomValue);
+</code></pre>
+<h3><code class="notranslate">get()</code> 方法：获取线程局部变量的值</h3>
+<p>使用 <code class="notranslate">get()</code> 方法可以检索当前线程的 <code class="notranslate">ThreadLocal</code> 变量值。如果当前线程尚未为此 <code class="notranslate">ThreadLocal</code> 变量设置任何值，<code class="notranslate">get()</code> 方法将首次触发 <code class="notranslate">initialValue()</code> 方法来获取一个初始值。</p>
+<p>示例：</p>
+<p><strong>Java</strong></p>
+<pre class="notranslate"><code class="notranslate">int value = threadLocalValue.get();
+</code></pre>
+<h3><code class="notranslate">initialValue()</code> 和 <code class="notranslate">withInitial()</code>：设置初始值</h3>
+<p><code class="notranslate">ThreadLocal</code> 提供了两种主要方式来为线程的首次访问提供一个默认初始值。</p>
+<ul>
+<li>
+<p><strong><code class="notranslate">initialValue()</code>:</strong> 您可以通过继承 <code class="notranslate">ThreadLocal</code> 类并重写 <code class="notranslate">initialValue()</code> 方法来提供一个默认初始值。这种方式通常通过匿名内部类来实现，代码如下：<br>
+<strong>Java</strong></p>
+<pre class="notranslate"><code class="notranslate">private static final ThreadLocal&lt;String&gt; myThreadLocal = new ThreadLocal&lt;String&gt;() {
+    @Override
+    protected String initialValue() {
+        return "Default Value";
+    }
+};
+</code></pre>
+<p><code class="notranslate">initialValue()</code> 方法只会在线程首次通过 <code class="notranslate">get()</code> 方法访问该 <code class="notranslate">ThreadLocal</code> 变量且之前未通过 <code class="notranslate">set()</code> 方法设置过值时被调用一次。</p>
+</li>
+<li>
+<p><strong><code class="notranslate">withInitial()</code>:</strong> 这是 Java 8 引入的更现代、更推荐的方式，通过静态工厂方法 <code class="notranslate">ThreadLocal.withInitial()</code> 并传入一个 <code class="notranslate">Supplier</code> 函数式接口的实现来设置初始值。这种方式更加简洁，尤其适用于 Lambda 表达式。<br>
+<strong>Java</strong></p>
+<pre class="notranslate"><code class="notranslate">private static final ThreadLocal&lt;String&gt; myThreadLocal =
+        ThreadLocal.withInitial(() -&gt; "Initial Value");
+</code></pre>
+</li>
+</ul>
+<h3><code class="notranslate">remove()</code> 方法：清除线程局部变量的值</h3>
+<p>调用 <code class="notranslate">threadLocalValue.remove()</code> 方法可以移除当前线程的 <code class="notranslate">ThreadLocal</code> 变量值。一旦值被移除，如果该线程之后再次通过 <code class="notranslate">get()</code> 方法访问此 <code class="notranslate">ThreadLocal</code> 变量，其值将（如果重写了 <code class="notranslate">initialValue()</code> 或使用了 <code class="notranslate">withInitial()</code>）被重新初始化，除非在此期间被再次 <code class="notranslate">set()</code>。</p>
+<p><strong>至关重要：</strong><code class="notranslate">remove()</code> 方法是防止内存泄漏的关键步骤。在线程池等线程复用环境中，如果 <code class="notranslate">ThreadLocal</code> 值不被及时清理，可能会导致旧数据被新任务误用，并造成内存持续增长。</p>
+<h3>代码示例</h3>
+<p>以下是一个简单的、可运行的示例，演示了 <code class="notranslate">set</code>、<code class="notranslate">get</code>、<code class="notranslate">remove</code> 和 <code class="notranslate">withInitial</code> 的基本用法：</p>
+<p><strong>Java</strong></p>
+<pre class="notranslate"><code class="notranslate">import java.util.concurrent.ThreadLocalRandom;
+
+public class ThreadLocalBasicExample {
+
+    // 定义一个 ThreadLocal 变量，并使用 withInitial() 设置一个初始值
+    // 每个线程首次访问时，会随机生成一个0-99的整数作为其初始值
+    private static final ThreadLocal&lt;Integer&gt; threadLocalValue =
+            ThreadLocal.withInitial(() -&gt; ThreadLocalRandom.current().nextInt(100));
+
+    public static void main(String args) {
+        System.out.println("--- 演示 ThreadLocal 基本用法 ---");
+
+        // 创建并启动多个线程
+        for (int i = 0; i &lt; 3; i++) {
+            Thread thread = new Thread(() -&gt; {
+                String threadName = Thread.currentThread().getName();
+                System.out.println(threadName + ": 初始值 (未设置前) = " + threadLocalValue.get()); // 首次get()会触发initialValue()
+
+                // 为当前线程设置一个新的线程局部值
+                int newValue = ThreadLocalRandom.current().nextInt(100, 200);
+                threadLocalValue.set(newValue);
+                System.out.println(threadName + ": 值已设置为 = " + threadLocalValue.get());
+
+                // 模拟一些工作，确保值在线程内持久
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+
+                // 再次获取值，确认其持久性
+                System.out.println(threadName + ": 工作后的值 = " + threadLocalValue.get());
+
+                // 关键的清理步骤：移除线程局部值
+                threadLocalValue.remove();
+                System.out.println(threadName + ": 移除后的值 = " + threadLocalValue.get() + " (已重新初始化或为null)"); // 再次get()会重新触发initialValue()
+
+            }, "Thread-" + (i + 1));
+            thread.start();
+        }
+    }
+}
+</code></pre>
+<h3>Table: ThreadLocal 方法速查表</h3>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>方法名称</th>
+<th>描述</th>
+<th>返回类型</th>
+<th>关键说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code class="notranslate">get()</code></td>
+<td>获取当前线程的<code class="notranslate">ThreadLocal</code>变量值。</td>
+<td><code class="notranslate">T</code></td>
+<td>如果未设置，首次调用会触发<code class="notranslate">initialValue()</code>或<code class="notranslate">withInitial()</code>。</td>
+</tr>
+<tr>
+<td><code class="notranslate">set(T value)</code></td>
+<td>设置当前线程的<code class="notranslate">ThreadLocal</code>变量值。</td>
+<td><code class="notranslate">void</code></td>
+<td>为当前线程存储一个独立的副本。</td>
+</tr>
+<tr>
+<td><code class="notranslate">remove()</code></td>
+<td>移除当前线程的<code class="notranslate">ThreadLocal</code>变量值。</td>
+<td><code class="notranslate">void</code></td>
+<td>​<strong>至关重要</strong>​，用于防止内存泄漏和旧数据复用。移除后再次<code class="notranslate">get()</code>会重新初始化。</td>
+</tr>
+<tr>
+<td><code class="notranslate">initialValue()</code></td>
+<td>（子类重写）返回线程首次访问时的默认初始值。</td>
+<td><code class="notranslate">T</code></td>
+<td>默认返回<code class="notranslate">null</code>。通常通过匿名内部类实现。</td>
+</tr>
+<tr>
+<td><code class="notranslate">withInitial(Supplier supplier)</code></td>
+<td>（静态工厂方法）使用<code class="notranslate">Supplier</code>函数式接口设置初始值。</td>
+<td><code class="notranslate">ThreadLocal</code></td>
+<td>Java 8+ 推荐的简洁初始化方式。</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p>该表格为开发者提供了一个简洁的 <code class="notranslate">ThreadLocal</code> 核心方法参考，有助于快速回顾其功能和使用注意事项，特别是 <code class="notranslate">remove()</code> 方法的重要性。</p>
+<h2>ThreadLocal 的典型应用场景</h2>
+<p><code class="notranslate">ThreadLocal</code> 在多种多线程应用场景中都展现出其独特的价值，尤其是在需要维护线程隔离状态或隐式传递上下文信息时。</p>
+<h3>Web 应用中的用户会话管理</h3>
+<p>Web 应用程序通常运行在多线程环境中，每个用户请求通常由一个独立的线程来处理。在这种架构下，<code class="notranslate">ThreadLocal</code> 是存储上下文特定数据（如用户认证信息、区域设置、会话 ID 或其他请求特定详细信息）的理想选择。它允许应用程序在不显式地将这些数据作为方法参数层层传递的情况下，在应用程序的多个层中访问这些信息。例如，一个 <code class="notranslate">SessionManager</code> 类可以使用 <code class="notranslate">ThreadLocal</code> 来存储当前用户的 <code class="notranslate">User</code> 对象或会话信息。</p>
+<p>为了确保数据的正确设置和清理，最佳实践是在 Web 框架的请求处理链中使用 <code class="notranslate">ServletFilter</code> 或 Spring <code class="notranslate">HandlerInterceptor</code>。在请求开始时（例如 <code class="notranslate">preHandle</code> 方法中）设置 <code class="notranslate">ThreadLocal</code> 值，并在请求结束时（例如 <code class="notranslate">afterCompletion</code> 或 <code class="notranslate">afterConcurrentHandlingStarted</code> 方法的 <code class="notranslate">finally</code> 块中）清理它。这种模式确保了每个请求的数据隔离，并避免了线程复用带来的数据污染问题。</p>
+<h3>数据库连接管理</h3>
+<p>在与数据库交互的应用程序中，<code class="notranslate">ThreadLocal</code> 可以用来确保每个线程都有其专用的数据库连接。这种方式在某些简单场景下可以避免连接池的额外开销（尽管对于大多数生产环境应用，成熟的连接池库仍是首选），并且消除了在管理连接时的同步问题。例如，一个 <code class="notranslate">ConnectionManager</code> 类可以使用 <code class="notranslate">ThreadLocal</code> 来为每个线程提供一个数据库连接。这确保了每个线程操作的是自己的连接，避免了并发访问共享连接可能导致的问题。</p>
+<h3>日志上下文管理 (MDC)</h3>
+<p><code class="notranslate">ThreadLocal</code> 经常被用于管理日志框架（如 Log4j 或 SLF4J）中的 MDC (Mapped Diagnostic Context) 上下文。它允许每个线程拥有自己的上下文信息副本（例如，请求 ID、用户 ID、事务 ID 等），这些信息可以自动包含在所有由该线程生成的日志消息中，而无需显式地将它们作为参数传递给每个日志方法调用。这极大地有助于在复杂系统中进行调试和请求追踪，因为日志条目会自动携带其所属请求的上下文信息。</p>
+<h3>事务特定数据</h3>
+<p>在分布式系统或复杂的业务逻辑中，<code class="notranslate">ThreadLocal</code> 可以用来存储事务 ID 或其他事务特定数据。这确保了每个线程只处理其自己的事务上下文，避免了不同事务之间的数据混淆，从而维护了事务的隔离性和一致性。</p>
+<h3>处理非线程安全库</h3>
+<p>如前所述，<code class="notranslate">ThreadLocal</code> 是处理非线程安全工具类（例如 <code class="notranslate">SimpleDateFormat</code>）的优秀解决方案。通过为每个线程提供一个独立的实例，<code class="notranslate">ThreadLocal</code> 避免了在多线程环境下对这些对象的同步访问，从而防止了并发问题，同时避免了频繁创建和销毁对象所带来的性能开销。</p>
+<p>上述 Web 应用程序和 MDC 的例子都突显了 <code class="notranslate">ThreadLocal</code> 能够隐式地“传递”上下文信息，而无需显式的方法参数。这不仅仅是代码编写上的便利，更是一种重要的架构模式。在多层应用程序中，如果需要将 <code class="notranslate">UserContext</code> 或 <code class="notranslate">TransactionId</code> 等上下文信息通过几十个方法调用层层传递，将导致“参数污染”，使方法签名变得臃肿且难以阅读。<code class="notranslate">ThreadLocal</code> 提供了一个干净的替代方案，通过使其在当前线程范围内全局可访问，从而简化了应用程序的设计。这种机制在提高代码可读性和可维护性方面发挥着关键作用，前提是必须确保正确的清理。</p>
+<p>以下是一个简化的 Web 请求处理场景的代码示例，演示了 <code class="notranslate">ThreadLocal</code> 在用户会话管理中的应用：</p>
+<p><strong>Java</strong></p>
+<pre class="notranslate"><code class="notranslate">// User.java (Simple POJO)
+class User {
+    private String username;
+    private String role;
+
+    public User(String username, String role) {
+        this.username = username;
+        this.role = role;
+    }
+
+    public String getUsername() { return username; }
+    public String getRole() { return role; }
+
+    @Override
+    public String toString() {
+        return "User{" + "username='" + username + '\'' + ", role='" + role + '\'' + '}';
+    }
+}
+
+// SessionManager.java
+class SessionManager {
+    // ThreadLocal to store the User object for the current thread
+    private static final ThreadLocal&lt;User&gt; currentUser = new ThreadLocal&lt;&gt;();
+
+    public static void setUser(User user) {
+        currentUser.set(user);
+    }
+
+    public static User getUser() {
+        return currentUser.get();
+    }
+
+    public static void clear() {
+        currentUser.remove(); // Crucial for cleanup!
+    }
+}
+
+// WebRequestProcessor.java (Simulates a web request handling)
+public class WebRequestProcessor implements Runnable {
+    private final User user;
+
+    public WebRequestProcessor(User user) {
+        this.user = user;
+    }
+
+    @Override
+    public void run() {
+        try {
+            // 1. Set the user context at the beginning of the request processing
+            SessionManager.setUser(user);
+            System.out.println(Thread.currentThread().getName() + ": User set in ThreadLocal: " + SessionManager.getUser().getUsername());
+
+            // Simulate processing that accesses user context deep down
+            processBusinessLogic();
+
+        } finally {
+            // 2. ALWAYS clear the ThreadLocal at the end of the request
+            SessionManager.clear();
+            System.out.println(Thread.currentThread().getName() + ": ThreadLocal cleared. Current User: " + SessionManager.getUser()); // Should be null
+        }
+    }
+
+    private void processBusinessLogic() {
+        // Imagine this method is deep in the call stack,
+        // but can still easily access the current user
+        User userFromContext = SessionManager.getUser();
+        if (userFromContext!= null) {
+            System.out.println(Thread.currentThread().getName() + ": Business logic acting on user: " + userFromContext.getUsername());
+        } else {
+            System.out.println(Thread.currentThread().getName() + ": Business logic: No user context found!");
+        }
+    }
+
+    public static void main(String args) {
+        System.out.println("--- Demonstrating ThreadLocal in Web Application Scenario ---");
+        new Thread(new WebRequestProcessor(new User("Alice", "Admin")), "Request-Thread-1").start();
+        new Thread(new WebRequestProcessor(new User("Bob", "Guest")), "Request-Thread-2").start();
+    }
+}
+</code></pre>
+<h2>ThreadLocal 的优势与劣势</h2>
+<p>如同任何强大的工具一样，<code class="notranslate">ThreadLocal</code> 也有其明确的优势和潜在的劣势。</p>
+<h3>优势</h3>
+<ul>
+<li><strong>线程安全 (Thread Safety):</strong> 通过将数据隔离到单个线程，<code class="notranslate">ThreadLocal</code> 本身就实现了数据的线程安全，从而消除了竞态条件和对显式同步的需求。</li>
+<li><strong>性能提升 (Performance Improvement):</strong> 避免了与锁机制（如 <code class="notranslate">synchronized</code> 或 <code class="notranslate">ReentrantLock</code>）相关的开销，可以显著提高应用程序的性能，尤其是在高并发场景下。</li>
+<li><strong>简化设计 (Simplified Design):</strong> 它提供了一种直接的方式来维护线程内部状态，而无需管理共享数据访问的复杂性或通过大量方法参数传递数据，从而简化了多线程应用程序的设计。</li>
+<li><strong>数据持久性 (Data Persistence within Thread):</strong> 存储在 <code class="notranslate">ThreadLocal</code> 中的数据在特定线程的整个生命周期内，跨越不同的方法调用，都保持持久性。</li>
+</ul>
+<h3>劣势</h3>
+<ul>
+<li><strong>内存泄漏风险 (Memory Leak Risk):</strong> 这是 <code class="notranslate">ThreadLocal</code> 最显著的缺点。不正确的使用，特别是在线程池环境中（如 Web 服务器或自定义线程池）未能调用 <code class="notranslate">remove()</code> 方法，可能导致 <code class="notranslate">ThreadLocal</code> 变量在内存中持续累积，最终引发 <code class="notranslate">OutOfMemoryError</code>。</li>
+<li><strong>调试复杂性 (Debugging Complexity):</strong> 由于数据是按线程隔离的，并且不全局可见，因此与 <code class="notranslate">ThreadLocal</code> 滥用（例如，不正确的清理、陈旧值）相关的调试问题可能非常具有挑战性，并且难以追踪。</li>
+<li><strong>过度使用问题 (Potential for Misuse/Overuse):</strong> 过度或不恰当地使用 <code class="notranslate">ThreadLocal</code> 可能导致代码难以阅读、维护和理解，尤其是在将其用作全局数据替代品或用于本应共享和同步的数据时。它应仅在真正需要线程隔离数据时才使用。</li>
+</ul>
+<p><code class="notranslate">ThreadLocal</code> 虽然避免了显式参数传递，但它引入了一种“隐藏的全局状态”形式，这种状态存在于每个线程内部。这种特性可能使单元测试变得更加困难，因为测试需要为每个测试方法正确地设置和拆卸 <code class="notranslate">ThreadLocal</code> 状态，以确保测试之间的隔离性并防止测试污染。如果管理不当，测试可能会无意中依赖于在同一线程上运行的前一个测试所设置的状态，尤其是在并行测试执行时。因此，<code class="notranslate">ThreadLocal</code> 在上下文传播方面的便利性伴随着一定的代价：潜在的更难调试的问题以及如果其生命周期未得到严格管理，测试复杂性会增加。这进一步强调了严格遵循最佳实践的重要性。</p>
+<h2>警惕内存泄漏：ThreadLocal 的陷阱与清理</h2>
+<p>内存泄漏是 <code class="notranslate">ThreadLocal</code> 最常见也是最危险的陷阱。深入理解其机制并采取正确的清理措施至关重要。</p>
+<h3>内存泄漏机制解析</h3>
+<p><code class="notranslate">ThreadLocalMap</code> 的内部实现使用弱引用来存储 <code class="notranslate">ThreadLocal</code> 实例作为 ​<em>键</em>​，但存储的 <em>值</em> 却是强引用。在 Web 服务器或自定义线程池等环境中，线程是长期存活并被重复用于处理多个任务或请求的。</p>
+<p>如果在使用 <code class="notranslate">ThreadLocal</code> 变量后没有调用 <code class="notranslate">remove()</code> 方法，那么与该 <code class="notranslate">ThreadLocal</code> 关联的值将继续保留在线程的 <code class="notranslate">ThreadLocalMap</code> 中。即使 <code class="notranslate">ThreadLocal</code> 实例本身由于只被弱引用而最终被垃圾收集器回收，<code class="notranslate">ThreadLocalMap</code> 中的相应条目也可能仍然存在，只是其键变为 <code class="notranslate">null</code>，但对值的强引用依然存在。当线程被复用时，这些未被清理的旧值会持续累积，最终可能导致内存耗尽，引发 <code class="notranslate">OutOfMemoryError</code>。</p>
+<p>值得注意的是，<code class="notranslate">remove()</code> 方法和 <code class="notranslate">set(null)</code> 方法在清理效果上存在细微但重要的区别。<code class="notranslate">set(null)</code> 仅仅是将 <code class="notranslate">ThreadLocal</code> 变量的值设置为 <code class="notranslate">null</code>，但它可能不会立即从 <code class="notranslate">ThreadLocalMap</code> 中移除该条目，这可能导致底层条目仍然存在，并可能继续持有对 <code class="notranslate">ThreadLocal</code> 键的弱引用。而 <code class="notranslate">remove()</code> 方法则会完全移除 <code class="notranslate">ThreadLocalMap</code> 中对应的条目，这是一种更安全、更彻底的清理方式，可以有效避免潜在的内存泄漏问题。</p>
+<h3>深层内存泄漏：类加载器泄漏</h3>
+<p>除了常见的堆内存泄漏，<code class="notranslate">ThreadLocal</code> 还可能引发一种更隐蔽且更严重的内存泄漏：类加载器泄漏。这种情况通常发生在应用程序服务器中。如果存储在 <code class="notranslate">ThreadLocal</code> 中的对象是某个由自定义类加载器（例如 Web 应用程序的类加载器）加载的类的实例，并且该 <code class="notranslate">ThreadLocal</code> 值未被移除，那么即使 Web 应用程序被卸载，核心应用程序服务器线程（长期存活）仍将持有对该对象的强引用。这进而导致对该对象所属类及其类加载器的强引用无法释放。最终，当应用程序被卸载时，其类加载器及其加载的所有类和资源将无法被垃圾收集器回收，从而导致永久性的内存泄漏。这种泄漏尤其具有欺骗性，因为它不会立即表现为应用程序的 <code class="notranslate">OutOfMemoryError</code>，而是随着时间的推移，在多次重新部署应用程序后，表现为永久代（或元空间）的持续增长。</p>
+<p>这种现象表明，<code class="notranslate">ThreadLocal</code> 的不当使用可能带来比简单堆内存耗尽更严重、更微妙的后果。它强调了在服务器环境中进行严格清理的绝对必要性，以及对 <code class="notranslate">ThreadLocal</code> 中存储的对象类型进行仔细考量的重要性。</p>
+<h3>最佳实践：务必在 <code class="notranslate">finally</code> 块中调用 <code class="notranslate">remove()</code></h3>
+<p>为了彻底防止内存泄漏，最关键的实践是始终在 <code class="notranslate">finally</code> 块中调用 <code class="notranslate">ThreadLocal.remove()</code> 方法，以确保无论代码执行是否发生异常，<code class="notranslate">ThreadLocal</code> 变量都能被及时清理。</p>
+<p>这在线程池环境中尤为重要，因为线程会被重复使用。如果 <code class="notranslate">ThreadLocal</code> 值未被清理，前一个任务的旧数据可能会被下一个任务错误地获取，导致数据污染和难以追踪的错误。</p>
+<ul>
+<li>对于自定义线程池，可以考虑扩展 <code class="notranslate">ThreadPoolExecutor</code> 并重写 <code class="notranslate">afterExecute()</code> 方法。在该方法中，为所有相关的 <code class="notranslate">ThreadLocal</code> 实例执行 <code class="notranslate">remove()</code> 操作，以确保每个任务执行完毕后线程状态被重置。</li>
+<li>对于 Web 应用程序，常见的做法是实现一个 <code class="notranslate">ServletFilter</code> 或 Spring <code class="notranslate">HandlerInterceptor</code> 来管理 <code class="notranslate">ThreadLocal</code> 的生命周期。在请求处理开始时（例如 <code class="notranslate">preHandle</code> 方法）设置 <code class="notranslate">ThreadLocal</code> 值，并在请求处理结束时（例如 <code class="notranslate">afterCompletion</code> 或 <code class="notranslate">afterConcurrentHandlingStarted</code> 方法）清理它。</li>
+</ul>
+<p>以下代码示例演示了在线程池上下文中使用 <code class="notranslate">finally</code> 块进行 <code class="notranslate">ThreadLocal</code> 清理的实践：</p>
+<p><strong>Java</strong></p>
+<pre class="notranslate"><code class="notranslate">import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
+
+public class ThreadLocalCleanupExample {
+
+    private static final ThreadLocal&lt;String&gt; requestId =
+            ThreadLocal.withInitial(() -&gt; "Default-Request-" + ThreadLocalRandom.current().nextInt(1000));
+
+    public static void main(String args) {
+        System.out.println("--- Demonstrating ThreadLocal Cleanup in Thread Pool ---");
+
+        ExecutorService executor = Executors.newFixedThreadPool(2); // A small thread pool
+
+        for (int i = 0; i &lt; 5; i++) { // Submit multiple tasks to reuse threads
+            final int taskId = i;
+            executor.submit(() -&gt; {
+                String threadName = Thread.currentThread().getName();
+                String currentRequestId = "Task-" + taskId + "-Req-" + ThreadLocalRandom.current().nextInt(1000, 9999);
+
+                try {
+                    requestId.set(currentRequestId); // Set a unique request ID for this task
+                    System.out.println(threadName + ": Processing task " + taskId + " with Request ID: " + requestId.get());
+
+                    // Simulate some work that might throw an exception
+                    // if (taskId % 2 == 0) {
+                    //     throw new RuntimeException("Simulated error for task " + taskId);
+                    // }
+
+                } catch (Exception e) {
+                    System.err.println(threadName + ": Error in task " + taskId + ": " + e.getMessage());
+                } finally {
+                    // CRUCIAL: Always remove the ThreadLocal value in a finally block
+                    requestId.remove();
+                    System.out.println(threadName + ": Request ID after cleanup: " + requestId.get() + " (should be initial/null for next task)");
+                }
+            });
+        }
+
+        executor.shutdown();
+        System.out.println("Submitted all tasks. Shutting down executor.");
+    }
+}
+</code></pre>
+<h2>ThreadLocal 使用的最佳实践</h2>
+<p>为了充分发挥 <code class="notranslate">ThreadLocal</code> 的优势并避免其潜在陷阱，遵循以下最佳实践至关重要：</p>
+<ul>
+<li><strong>及时清理 (Prompt Cleanup):</strong>
+<ul>
+<li>这是最重要的实践。始终在 <code class="notranslate">ThreadLocal</code> 变量不再需要时调用 <code class="notranslate">remove()</code> 方法，尤其是在线程池环境中，以防止内存泄漏。确保将 <code class="notranslate">remove()</code> 调用放置在 <code class="notranslate">finally</code> 块中，以保证即使发生异常也能执行清理。</li>
+</ul>
+</li>
+<li><strong>谨慎使用，避免滥用 (Judicious Use, Avoid Overuse):</strong>
+<ul>
+<li><code class="notranslate">ThreadLocal</code> 是一种强大的工具，但应谨慎使用，并且仅在真正需要线程特定数据时才使用。</li>
+<li>不要将其误用为全局数据的替代品，或用于本应共享和同步的数据。过度使用 <code class="notranslate">ThreadLocal</code> 可能导致代码难以阅读和维护。</li>
+</ul>
+</li>
+<li><strong>清晰的文档 (Clear Documentation):</strong>
+<ul>
+<li>详细记录 <code class="notranslate">ThreadLocal</code> 变量的用途、生命周期和清理责任，以帮助团队成员理解其行为，从而简化维护和调试。</li>
+</ul>
+</li>
+<li><strong>理解其核心目的 (Understand its Core Purpose):</strong>
+<ul>
+<li>在实现 <code class="notranslate">ThreadLocal</code> 之前，务必确保您的用例确实需要线程隔离的数据。它专为每个线程独有的数据而设计，而非用于通用的共享状态。</li>
+</ul>
+</li>
+<li><strong>在线程池环境中的注意事项 (Considerations in Thread Pool Environments):</strong>
+<ul>
+<li>在与线程池一起使用 <code class="notranslate">ThreadLocal</code> 时要格外小心，因为线程会被重复使用。如果未进行清理，来自前一个任务的陈旧数据可能会被新任务错误地获取。</li>
+<li>对于自定义 <code class="notranslate">ThreadPoolExecutor</code>，应在 <code class="notranslate">afterExecute()</code> 方法中实现清理逻辑；对于 Web 应用程序，则应在 <code class="notranslate">ServletFilter</code> 或 <code class="notranslate">HandlerInterceptor</code> 中管理 <code class="notranslate">ThreadLocal</code> 的生命周期。</li>
+</ul>
+</li>
+<li><strong>避免间接的数据竞争 (Avoid Indirect Data Contention):</strong>
+<ul>
+<li>尽管 <code class="notranslate">ThreadLocal</code> 本身可以防止对 <code class="notranslate">ThreadLocal</code> 变量的直接数据竞争，但如果存储在 <code class="notranslate">ThreadLocal</code> 中的数据随后修改了 ​<em>共享资源</em>​，仍然可能导致对该共享资源的竞争。因此，在设计时应注意 <code class="notranslate">ThreadLocal</code> 数据如何与系统其他部分交互。</li>
+</ul>
+</li>
+</ul>
+<p><code class="notranslate">ThreadLocal</code> 被誉为一种“强大工具”，能够“简化线程安全”并“减少开销”。然而，多个来源也警告其“滥用”和“过度使用”的风险。这表明 <code class="notranslate">ThreadLocal</code> 是针对特定问题（线程局部上下文）的特定设计选择，而不是所有同步或共享状态管理的通用替代方案。当正确应用时，它的优势是显著的，但如果理解不透彻，其潜在的陷阱可能非常严重。因此，开发者应将 <code class="notranslate">ThreadLocal</code> 视为管理线程特定状态的专业工具，特别是用于隐式上下文传播，而非并发问题的万能解决方案。对何时使用（以及更重要的是，何时不使用）它有细致的理解，是编写健壮、可维护的多线程应用程序的关键。</p>
+<h2>ThreadLocal 与其他并发机制的比较</h2>
+<p>为了更好地理解 <code class="notranslate">ThreadLocal</code> 的定位和价值，将其与 Java 中其他的并发机制进行比较是很有意义的。最常见的比较对象是 <code class="notranslate">synchronized</code> 关键字和各种锁机制。</p>
+<h3>与 <code class="notranslate">synchronized</code> / 锁的对比</h3>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>特性/方面</th>
+<th>ThreadLocal</th>
+<th>Synchronized / Locks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>目的</strong></td>
+<td>提供线程隔离的数据副本，消除共享。</td>
+<td>控制对共享资源的访问，确保一次只有一个线程修改。</td>
+</tr>
+<tr>
+<td><strong>数据访问</strong></td>
+<td>每个线程访问自己的独立副本。</td>
+<td>所有线程访问同一个共享资源，通过锁机制排他性访问。</td>
+</tr>
+<tr>
+<td><strong>线程安全机制</strong></td>
+<td>通过数据隔离实现线程安全，无需显式同步。</td>
+<td>通过互斥锁实现线程安全，阻止并发访问。</td>
+</tr>
+<tr>
+<td><strong>性能影响</strong></td>
+<td>避免锁开销，通常在读多写少且数据独立时性能更优。</td>
+<td>引入锁竞争、上下文切换和内存屏障开销，可能导致性能瓶颈。</td>
+</tr>
+<tr>
+<td><strong>复杂性</strong></td>
+<td>简化了线程内数据管理，但需要注意内存泄漏和清理。</td>
+<td>管理锁可能复杂，容易导致死锁或活锁。</td>
+</tr>
+<tr>
+<td><strong>典型用例</strong></td>
+<td>Web 请求上下文、MDC 日志、非线程安全对象的线程私有实例（如<code class="notranslate">SimpleDateFormat</code>）。</td>
+<td>保护共享计数器、缓存、数据库连接池中的共享队列等。</td>
+</tr>
+<tr>
+<td><strong>内存模型交互</strong></td>
+<td>涉及<code class="notranslate">ThreadLocalMap</code>的内部机制，数据对其他线程不可见。</td>
+<td>涉及内存屏障，保证共享变量的可见性和有序性。</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p>该表格清晰地划分了 <code class="notranslate">ThreadLocal</code> 与传统同步机制的不同角色、优势和劣势。<code class="notranslate">synchronized</code> 和锁（例如 <code class="notranslate">ReentrantLock</code>）是用于控制对 <em>共享资源</em> 访问的机制，以确保在任何给定时间只有一个线程可以修改它们，从而防止竞态条件。它们旨在保护共享的可变状态。</p>
+<p>相反，<code class="notranslate">ThreadLocal</code> 的目的是为数据提供 ​<em>线程特定的副本</em>​，从而有效地消除了对该特定数据进行共享的需求，进而也消除了同步的需求。它旨在隔离线程内部的可变状态。</p>
+<p>从性能角度看，<code class="notranslate">synchronized</code> 和锁由于上下文切换、内存屏障以及潜在的阻塞/死锁，会引入额外的开销。而 <code class="notranslate">ThreadLocal</code> 则避免了这种开销，因为每个线程都在自己的独立副本上操作，这在合适的场景下可以带来更好的性能。</p>
+<p>在复杂性方面，管理锁可能很复杂，如果不小心处理，可能会导致死锁或活锁。<code class="notranslate">ThreadLocal</code> 通过消除线程特定数据的显式锁管理需求，简化了数据管理。</p>
+<p>这两种机制解决了不同的问题，它们是互补的工具，而不是相互替代的。<code class="notranslate">ThreadLocal</code> 在需要为每个线程提供一个共享的、非线程安全对象的私有实例时特别有用（例如 <code class="notranslate">SimpleDateFormat</code>）。</p>
+<h2>总结</h2>
+<p><code class="notranslate">ThreadLocal</code> 是 Java 多线程应用程序中管理线程特定数据的一个强大而优雅的解决方案。它通过为每个线程提供其数据变量的独立副本，有效地简化了线程安全问题，并通过减少对显式同步机制的需求来提升应用程序性能，同时通过促进隐式上下文传播来简化代码设计。</p>
+<p>然而，如同任何强大的工具一样，<code class="notranslate">ThreadLocal</code> 必须负责任地使用，并对它的潜在影响有清晰的理解。其中最关键的方面是勤奋地清理工作：务必在 <code class="notranslate">finally</code> 块中调用 <code class="notranslate">remove()</code> 方法，尤其是在线程池环境中，以防止隐蔽且危险的内存泄漏。</p>
+<p>通过深入理解 <code class="notranslate">ThreadLocal</code> 的核心目的、内部工作机制，并严格遵循其最佳实践，开发者可以充分利用这一工具的优势，构建出健壮、高效且易于维护的并发应用程序。</p></div>
 <div style="font-size:small;margin-top:8px;float:right;"></div>
 
 <button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
@@ -98,7 +551,7 @@ if(""!=""){
 </script></div>
 </body>
 <script>
-var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z'};
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z', 'copy': 'M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z', 'check': 'M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'};
 var utterancesLoad=0;
 
 let themeSettings={
@@ -171,7 +624,70 @@ function iFrameLoading(){
     }
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    const createClipboardHTML = (codeContent, additionalClasses = '') => `
+        <pre class="notranslate"><code class="notranslate">${codeContent}</code></pre>
+        <div class="clipboard-container position-absolute right-0 top-0 ${additionalClasses}">
+            <clipboard-copy class="ClipboardButton btn m-2 p-0" role="button" style="display: inherit;">
+                <svg height="16" width="16" class="octicon octicon-copy m-2"><path d="${IconList["copy"]}"></path></svg>
+                <svg height="16" width="16" class="octicon octicon-check color-fg-success m-2 d-none"><path d="${IconList["check"]}"></path></svg>
+            </clipboard-copy>
+            <div class="copy-feedback">Copied!</div>
+        </div>
+    `;
 
+    const handleCodeElements = (selector = '') => {
+        document.querySelectorAll(selector).forEach(codeElement => {
+            const codeContent = codeElement.innerHTML;
+            const newStructure = document.createElement('div');
+            newStructure.className = 'snippet-clipboard-content position-relative overflow-auto';
+            newStructure.innerHTML = createClipboardHTML(codeContent);
+
+            const parentElement = codeElement.parentElement;
+            if (selector.includes('highlight')) {
+                parentElement.insertBefore(newStructure, codeElement.nextSibling);
+                parentElement.removeChild(codeElement);
+            } else {
+                parentElement.parentElement.replaceChild(newStructure, parentElement);
+            }
+        });
+    };
+
+    handleCodeElements('pre.notranslate > code.notranslate');
+    handleCodeElements('div.highlight > pre.notranslate');
+
+    let currentFeedback = null;
+    document.querySelectorAll('clipboard-copy').forEach(copyButton => {
+        copyButton.addEventListener('click', () => {
+            const codeContent = copyButton.closest('.snippet-clipboard-content').innerText;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = codeContent;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            const copyIcon = copyButton.querySelector('.octicon-copy');
+            const checkIcon = copyButton.querySelector('.octicon-check');
+            const copyFeedback = copyButton.nextElementSibling;
+
+            if (currentFeedback && currentFeedback !== copyFeedback) {currentFeedback.style.display = 'none';}
+            currentFeedback = copyFeedback;
+
+            copyIcon.classList.add('d-none');
+            checkIcon.classList.remove('d-none');
+            copyFeedback.style.display = 'block';
+            copyButton.style.borderColor = 'var(--color-success-fg)';
+
+            setTimeout(() => {
+                copyIcon.classList.remove('d-none');
+                checkIcon.classList.add('d-none');
+                copyFeedback.style.display = 'none';
+                copyButton.style.borderColor = '';
+            }, 2000);
+        });
+    });
+});
 
 </script>
 
