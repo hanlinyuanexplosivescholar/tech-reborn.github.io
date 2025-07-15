@@ -10,9 +10,9 @@
         let theme = localStorage.getItem("meek_theme") || "light";
         document.documentElement.setAttribute("data-color-mode", theme);
     </script>
-<meta name="description" content="">
+<meta name="description" content="在当今互联互通的数字世界中，应用程序之间安全地共享数据已成为常态。">
 <meta property="og:title" content="深入浅出 OAuth 2.0：开发者指南">
-<meta property="og:description" content="">
+<meta property="og:description" content="在当今互联互通的数字世界中，应用程序之间安全地共享数据已成为常态。">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/shen-ru-qian-chu-%20OAuth%202.0%EF%BC%9A-kai-fa-zhe-zhi-nan.html">
 <meta property="og:image" content="https://avatars.githubusercontent.com/u/68176923?v=4">
@@ -41,7 +41,17 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
     body {padding: 8px;}
     .postTitle{font-size:24px;}
 }
-
+.copy-feedback {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 50px;
+    color: var(--color-fg-on-emphasis);
+    background-color: var(--color-fg-muted);
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 12px;
+}
 </style>
 
 
@@ -73,7 +83,643 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
 </div>
 </div>
     <div id="content">
-<div class="markdown-body" id="postBody"></div>
+<div class="markdown-body" id="postBody"><p>在当今互联互通的数字世界中，应用程序之间安全地共享数据已成为常态。无论是社交媒体应用请求访问您的照片，还是云存储服务需要同步您的文件，背后都离不开一个强大的授权框架——OAuth 2.0。本文将作为一份开发者指南，深入探讨OAuth 2.0的核心机制、关键概念、不同授权流程，并强调其在保障数据安全方面的最佳实践。</p>
+<h3>引言</h3>
+<h4>什么是 OAuth 2.0？</h4>
+<p>OAuth 2.0（Open Authorization）是一个广泛采用的开放标准，旨在允许第三方应用程序以受限的方式访问服务提供商托管的用户数据，而无需直接暴露用户的敏感密码。该协议的核心职能在于授权，而非认证，其主要关注点是权限的授予与管理 ^1^。OAuth 2.0于2012年取代了其前身OAuth 1.0，并迅速成为在线授权领域的事实标准 ^3^。</p>
+<p>当用户通过OAuth 2.0向某个应用程序授予权限时，实际上是允许该应用访问特定信息或在另一项服务中执行特定操作。这些精确定义的权限集合被称为“作用域”（scopes），它们清晰地界定了应用程序被允许执行的功能及其访问的数据范围 ^1^。OAuth 2.0通过颁发“访问令牌”（Access Token）来具体实现这一授权机制。这个令牌是应用程序被授权访问特定资源的凭证，它代表了用户对特定操作的同意 ^1^。</p>
+<p>OAuth 2.0的设计理念，标志着授权模式从传统直接共享用户凭证方式的根本性转变。过去，应用程序可能直接要求用户提供用户名和密码，这无疑增加了凭证泄露的风险。OAuth 2.0引入的“委托授权”范式，使得用户凭证永远不会直接暴露给第三方应用程序，从而显著提升了整体安全态势。这种架构有效地缩小了网络钓鱼、凭证填充等基于凭证的攻击面，为用户数据提供了更坚实的安全保障。</p>
+<p>此外，“作用域”的概念在OAuth 2.0的安全模型中占据核心地位。通过支持细粒度的权限控制，OAuth 2.0自然而然地贯彻了“最小权限原则”。这意味着应用程序仅能获取其明确所需且用户明确批准的访问权限，而非用户账户的全部访问权。这种设计极大地降低了即使访问令牌被泄露所造成的潜在损害，因为其权限范围是严格受限的。这是现代安全协议设计中一个至关重要的模式。</p>
+<h4>授权 (Authorization) 与 认证 (Authentication)：核心区别</h4>
+<p>理解OAuth 2.0的关键在于区分“授权”与“认证”。OAuth 2.0协议本身纯粹是一个授权框架，它主要解决的问题是“谁可以访问哪些资源”以及“授予了哪些具体权限”，而非“你是谁”这一身份验证问题 ^1^。</p>
+<ul>
+<li><strong>认证 (Authentication)：</strong> 这是一个验证用户身份的过程，旨在回答“你是谁”的问题。例如，当用户输入用户名和密码登录系统时，就是在进行认证 ^2^。</li>
+<li><strong>授权 (Authorization)：</strong> 这是一个授予对特定资源访问权限的过程，旨在回答“你可以做什么”的问题。例如，允许一个应用程序访问用户的Google Drive文件，就是典型的授权行为 ^1^。</li>
+</ul>
+<p>值得注意的是，尽管OAuth流程中包含授权服务器验证资源所有者身份的步骤（即用户登录），但这种身份验证的方式和具体实现机制本身并不属于OAuth协议的范畴 ^2^。OAuth 2.0通过向第三方（即客户端应用程序）颁发访问令牌来执行授权，资源服务器随后通过验证此令牌来判断是否允许访问受保护的资源 ^2^。</p>
+<p>这种将授权与认证职责清晰分离的设计，是OAuth 2.0框架的一个核心特点。通过这种“关注点分离”的原则，OAuth 2.0能够专注于安全地委托访问权限，而不必纠缠于身份验证的复杂性，因为身份验证本身具有一套独立的安全考量。这种模块化设计使得专业的身份验证协议，如OpenID Connect，能够构建在OAuth 2.0之上，从而形成更健壮、更灵活的安全架构。</p>
+<p>这种设计对单点登录（SSO）和身份管理产生了深远的影响。由于OAuth 2.0仅“委托”授权，而不直接为客户端“认证”用户身份，它本身无法直接提供SSO功能。这正是OpenID Connect (OIDC) 发挥作用的地方 ^2^。OIDC，作为构建在OAuth 2.0之上的身份层，它允许客户端验证用户身份并获取基本个人资料信息。这种关系突显了基础授权框架（OAuth 2.0）如何被扩展以支持更广泛的身份管理需求，例如SSO，同时又不稀释其核心授权目的。</p>
+<h3>OAuth 2.0 的核心角色</h3>
+<p>OAuth 2.0框架的顺畅运作依赖于四个关键实体之间的协作。这些角色各司其职，共同构建了一个安全的授权流程 ^1^：</p>
+<ul>
+<li><strong>资源所有者 (Resource Owner)</strong>
+<ul>
+<li><strong>定义：</strong> 拥有受保护资源（例如用户数据、文件或API访问权限）的个体或实体。在大多数实际应用场景中，资源所有者就是最终用户 ^1^。</li>
+<li><strong>职责：</strong> 资源所有者的核心职责在于决定是否授权客户端应用程序访问其受保护的资源。这一决策通常通过与授权服务器的交互来完成，资源所有者在此过程中会明确批准或拒绝客户端的访问请求 ^1^。</li>
+<li><strong>示例：</strong> 一个希望允许第三方云存储管理应用访问其Google Drive文件的用户 ^1^。</li>
+</ul>
+</li>
+<li><strong>客户端 (Client)</strong>
+<ul>
+<li><strong>定义：</strong> 寻求访问资源所有者受保护资源的应用程序。客户端可以是多种形式，包括基于Web的应用程序（如单页应用或传统Web应用）、移动应用程序或桌面应用程序 ^1^。</li>
+<li><strong>职责：</strong> 客户端启动授权流程，通常通过将用户重定向到授权服务器来请求授权。在重定向请求中，客户端会包含其自身的客户端ID、预注册的重定向URI以及所需的作用域等参数。一旦授权服务器颁发了授权码或直接颁发了访问令牌，客户端便会接收并使用该访问令牌向资源服务器请求访问受保护的资源 ^1^。</li>
+<li><strong>示例：</strong> 一个需要访问用户Google Drive文件以进行备份或同步的云存储管理应用 ^1^。</li>
+</ul>
+</li>
+<li><strong>授权服务器 (Authorization Server)</strong>
+<ul>
+<li><strong>定义：</strong> 这是一个专门的服务器，负责验证资源所有者的身份（即用户登录），并在获得其明确批准后，向客户端颁发授权许可（Authorization Grant）。在某些授权流程中，授权服务器也可能直接向客户端颁发访问令牌 ^1^。</li>
+<li><strong>职责：</strong> 授权服务器向资源所有者展示一个“同意屏幕”，列出客户端请求的权限，并等待用户批准或拒绝。如果用户批准，授权服务器将颁发一个授权码（这是最常见的授权许可形式），该授权码代表了用户的同意。随后，授权服务器会验证客户端提供的授权码，并最终向客户端颁发访问令牌。此外，授权服务器还负责管理客户端的注册信息和凭证 ^1^。</li>
+<li><strong>示例：</strong> Google的身份验证服务，它处理用户的登录过程，并管理第三方应用对Google API的授权 ^1^。</li>
+</ul>
+</li>
+<li><strong>资源服务器 (Resource Server)</strong>
+<ul>
+<li><strong>定义：</strong> 托管着受保护资源（例如用户数据、API端点）的服务器 ^1^。</li>
+<li><strong>职责：</strong> 资源服务器接收来自客户端的请求，这些请求中包含了访问令牌。其主要职责是验证这些访问令牌的有效性。如果令牌有效且具有访问所请求资源的必要权限，资源服务器便会授予客户端访问权限，并返回相应的受保护资源 ^1^。</li>
+<li><strong>示例：</strong> Google Drive API，它托管着用户的云端文件，并根据访问令牌的权限允许或拒绝访问这些文件 ^1^。</li>
+</ul>
+</li>
+</ul>
+<p>这四个角色之间的互动形成了一个“信任三角”。资源所有者信任授权服务器能够安全地处理其凭证，并准确地代表其授予的权限。客户端信任授权服务器能够颁发有效的令牌。资源服务器信任授权服务器颁发的令牌能够正确反映资源所有者的同意，并在必要时对客户端进行身份验证。这种相互信任的关系是OAuth 2.0安全模型的基础。如果其中任何一个信任关系被破坏（例如，授权服务器存在漏洞、客户端配置错误或资源服务器未能正确验证令牌），整个安全模型都可能失效。这突显了所有组件在实现过程中保持健壮性的重要性。</p>
+<p>从更深层次的角度来看，OAuth 2.0的设计将凭证处理的责任从客户端转移开来。在传统的应用架构中，应用程序可能会直接处理用户的凭证。然而，在OAuth 2.0中，资源所有者仅与授权服务器进行身份验证交互 ^1^。这意味着客户端应用程序永远不会直接接触到用户的密码。这种架构从根本上降低了因客户端应用程序受损而导致凭证被盗的风险。其更广泛的意义在于，用户凭证的安全责任集中于授权服务器，而授权服务器通常是一个高度专业化且受到严格保护的服务。</p>
+<p>为了更清晰地展示这些核心角色及其职责，下表进行了总结：</p>
+<p><strong>表：OAuth 2.0 核心角色及其职责</strong></p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>角色 (Role)</th>
+<th>定义 (Definition)</th>
+<th>主要职责 (Key Responsibilities)</th>
+<th>示例 (Example)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>资源所有者 (Resource Owner)</strong></td>
+<td>拥有受保护资源（如用户数据、文件）的个体或实体，通常是最终用户。</td>
+<td>批准或拒绝客户端对资源的访问请求。</td>
+<td>希望允许应用访问其Google Drive文件的用户。</td>
+</tr>
+<tr>
+<td><strong>客户端 (Client)</strong></td>
+<td>请求访问资源所有者受保护资源的应用程序。</td>
+<td>启动授权流程，接收授权码/访问令牌，并使用令牌访问资源。</td>
+<td>一个需要访问用户Google Drive文件的云存储管理应用。</td>
+</tr>
+<tr>
+<td><strong>授权服务器 (Authorization Server)</strong></td>
+<td>负责验证资源所有者身份，并在获得批准后颁发授权许可或访问令牌的服务器。</td>
+<td>向用户展示同意屏幕，颁发授权码/访问令牌，管理客户端注册和凭证。</td>
+<td>Google的身份验证服务。</td>
+</tr>
+<tr>
+<td><strong>资源服务器 (Resource Server)</strong></td>
+<td>托管受保护资源（如用户数据、API）的服务器。</td>
+<td>接收客户端请求，验证访问令牌，并根据权限授予资源访问。</td>
+<td>Google Drive API。</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<h3>OAuth 2.0 关键概念解析</h3>
+<p>为了深入理解OAuth 2.0的运作机制，有必要掌握其构成协议的几个核心概念。这些概念是构建安全、可扩展授权流程的基石。</p>
+<h4>授权码 (Authorization Code)</h4>
+<p>授权码是OAuth 2.0授权流程中一个关键的中间凭证，尤其在授权码授权类型（Authorization Code Grant）中扮演核心角色。它是一个一次性使用的、短生命周期的令牌 ^16^。当资源所有者（用户）在授权服务器上批准了客户端的访问请求后，授权服务器不会直接将访问令牌返回给客户端，而是首先颁发一个授权码 ^1^。</p>
+<p>客户端接收到这个授权码后，会通过一个安全的后端通道（通常是服务器到服务器的通信）将其发送到授权服务器的令牌端点（Token Endpoint），并用其交换真正的访问令牌和（可选的）刷新令牌 ^11^。这种两步走的设计显著增强了安全性，因为授权码本身没有直接的访问权限，且其传输发生在用户代理（如浏览器）和客户端服务器之间，而访问令牌的交换则发生在客户端的后端服务器与授权服务器之间，避免了敏感令牌在浏览器等不安全环境中直接暴露 ^17^。</p>
+<h4>访问令牌 (Access Token)</h4>
+<p>访问令牌是OAuth 2.0中用于授权访问受保护资源的核心凭证 ^3^。它是一个字符串，代表了客户端应用程序被授权访问特定资源（如API）的权限，通常具有特定的作用域（scope）和有限的生命周期 ^11^。客户端在向资源服务器发出请求时，会在请求头中包含这个访问令牌，资源服务器通过验证该令牌来决定是否允许访问 ^1^。</p>
+<p>访问令牌通常是“不透明”的字符串，这意味着客户端不应尝试解析或解释其内容，因为其格式和内部信息由授权服务器控制，且可能因实现而异 ^7^。访问令牌的主要目的是授权客户端对资源服务器的访问，而不是传递用户身份信息 ^7^。访问令牌的生命周期通常较短，例如5到30分钟 ^16^，这限制了即使令牌被泄露，攻击者可利用的时间窗口。</p>
+<h4>刷新令牌 (Refresh Token)</h4>
+<p>刷新令牌是一种特殊的令牌，其生命周期通常比访问令牌长得多，可以从数小时到数年 ^16^。它允许客户端在无需用户重新认证的情况下，从授权服务器获取新的访问令牌 ^19^。当访问令牌过期时，客户端可以使用刷新令牌向授权服务器的令牌端点发起请求，以获取新的访问令牌，从而维持用户会话的连续性 ^15^。</p>
+<p>刷新令牌的引入解决了访问令牌生命周期短与用户体验长会话需求之间的矛盾。它避免了用户频繁重新登录的麻烦，同时又保持了访问令牌的短生命周期以降低安全风险。刷新令牌通常只在客户端与授权服务器之间进行交换，而不会发送给资源服务器 ^20^。出于安全考虑，公共客户端（如移动应用或单页应用）的刷新令牌必须是“发送者受限”或“一次性使用”的，以防止令牌被窃取后重放 ^21^。</p>
+<h4>作用域 (Scope)</h4>
+<p>作用域是OAuth 2.0中一个至关重要的概念，它提供了一种机制来限制应用程序对用户账户的访问权限 ^1^。当客户端请求授权时，它会指定一个或多个作用域，这些作用域定义了它希望访问的资源类型或执行的操作。例如，一个应用程序可能请求“读取用户资料”的作用域，而不是“修改用户资料”或“删除用户资料”的权限 ^1^。</p>
+<p>作用域的粒度由资源服务器和授权服务器定义，它们决定了哪些作用域是可用的以及它们与哪些资源相关联 ^3^。通过作用域，用户可以精确控制他们授予第三方应用程序的权限，从而实现了“最小权限原则”。这种细粒度的控制有助于增强用户的信任，并减少因应用程序漏洞导致的数据泄露范围。</p>
+<h4>客户端ID与密钥 (Client ID &amp; Secret)</h4>
+<p>客户端ID（Client ID）和客户端密钥（Client Secret）是授权服务器在客户端应用程序注册时为其分配的凭证 ^3^。</p>
+<ul>
+<li><strong>客户端ID：</strong> 是一个公开的标识符，用于唯一识别客户端应用程序 ^13^。它通常在授权请求中发送给授权服务器。</li>
+<li><strong>客户端密钥：</strong> 是一个只有客户端应用程序和授权服务器知道的秘密字符串 ^22^。它用于客户端向授权服务器进行身份验证，尤其是在需要交换授权码以获取访问令牌的后端通信中 ^22^。</li>
+</ul>
+<p>客户端密钥的安全性至关重要。对于“机密客户端”（Confidential Clients），如Web服务器应用程序，它们能够安全地存储客户端密钥，例如在安全的服务器端配置中。然而，对于“公共客户端”（Public Clients），如移动应用或单页应用，由于其代码可被用户直接访问，安全存储客户端密钥变得极其困难，甚至不可能 ^22^。因此，公共客户端通常不使用客户端密钥进行认证，而是依赖PKCE（Proof Key for Code Exchange）等机制来增强安全性。</p>
+<p>客户端凭证（Client ID和Client Secret）的妥善处理，是OAuth 2.0安全的核心。如果这些凭证被泄露，恶意行为者可能冒充合法客户端，从而获取未经授权的访问权限。因此，绝不能将客户端密钥硬编码在代码中、提交到公共代码仓库、嵌入到客户端JavaScript文件或存储在可从外部访问的文件中 ^13^。这凸显了安全存储和管理这些凭证的必要性，例如通过秘密管理器（Secret Manager）进行管理。</p>
+<h4>重定向URI (Redirect URI)</h4>
+<p>重定向URI（Redirect URI），也称为回调URL（Callback URL），是客户端应用程序在授权服务器处预先注册的一个URL ^1^。在OAuth 2.0授权流程中，当资源所有者在授权服务器上完成认证并授权后，授权服务器会将用户代理（通常是浏览器）重定向回这个预注册的URI，并在URI中包含授权码或访问令牌（取决于具体的授权类型） ^11^。</p>
+<p>重定向URI的验证是OAuth 2.0安全的关键环节。授权服务器必须严格验证传入的 <code class="notranslate">redirect_uri</code> 参数是否与客户端注册时提供的URI完全匹配 ^21^。未能严格验证重定向URI可能导致授权码或访问令牌被截获，从而引发授权码泄露攻击等安全漏洞 ^25^。例如，OAuth 2.0规范中曾存在一些宽松的匹配规则（如通配符匹配），但这些都被证明存在安全风险，并已被OAuth 2.1等后续规范废弃或收紧 ^21^。因此，始终推荐使用严格的URI字符串匹配，并避免在URI中包含片段标识符或使用可疑的URI方案 ^23^。</p>
+<h3>OAuth 2.0 授权流程 (Grant Types) 详解</h3>
+<p>OAuth 2.0框架定义了多种“授权类型”（Grant Types），每种类型都适用于不同的客户端场景和安全需求。选择正确的授权类型对于构建安全且高效的授权流程至关重要 ^1^。</p>
+<h4>授权码授权类型 (Authorization Code Grant): 最常用且推荐</h4>
+<p>授权码授权类型（Authorization Code Grant）是OAuth 2.0中最常用且最推荐的授权流程，尤其适用于能够安全存储客户端密钥的“机密客户端”，如传统的Web服务器应用程序 ^1^。它通过引入一个中间的授权码，提供了更高的安全性，有效避免了访问令牌在用户代理（如浏览器）中直接暴露的风险 ^17^。</p>
+<p><strong>流程步骤</strong></p>
+<p>授权码授权流程通常涉及以下几个关键步骤 ^16^：</p>
+<ol>
+<li><strong>客户端请求授权：</strong> 客户端应用程序将用户重定向到授权服务器的授权端点（Authorization Endpoint）。此请求包含客户端ID、请求的作用域、预注册的重定向URI以及一个随机生成的 <code class="notranslate">state</code> 参数（用于防止CSRF攻击）^11^。</li>
+<li><strong>资源所有者认证与授权：</strong> 用户在授权服务器上进行身份验证（登录），然后授权服务器会向用户展示一个同意屏幕，列出客户端请求的权限。用户在此屏幕上批准或拒绝这些权限 ^1^。</li>
+<li><strong>授权服务器颁发授权码：</strong> 如果用户批准了请求，授权服务器会将用户代理重定向回客户端预注册的重定向URI，并在URI的查询参数中包含一个一次性的“授权码”（<code class="notranslate">code</code>）以及之前客户端发送的 <code class="notranslate">state</code> 参数 ^1^。</li>
+<li><strong>客户端交换授权码：</strong> 客户端的后端服务器接收到授权码后，会立即向授权服务器的令牌端点（Token Endpoint）发起一个POST请求。此请求包含授权码、客户端ID、客户端密钥以及重定向URI。这一步是服务器到服务器的直接通信，因此是安全的 ^11^。</li>
+<li><strong>授权服务器颁发令牌：</strong> 授权服务器验证授权码、客户端ID和客户端密钥的有效性。如果一切验证通过，授权服务器会向客户端颁发“访问令牌”（Access Token）和（可选的）“刷新令牌”（Refresh Token）^1^。</li>
+<li><strong>客户端访问受保护资源：</strong> 客户端现在可以使用获取到的访问令牌，向资源服务器发起请求，访问用户授权的受保护资源。资源服务器验证访问令牌的有效性，并根据令牌中包含的权限授予或拒绝访问 ^1^。</li>
+</ol>
+<p><strong>PKCE (Proof Key for Code Exchange) 的重要性</strong></p>
+<p>尽管授权码授权类型被认为是安全的，但对于无法安全存储客户端密钥的“公共客户端”（如单页应用SPA、移动/原生应用），它仍然存在潜在的“授权码拦截攻击”风险 ^32^。攻击者可能在授权码从授权服务器重定向回客户端的过程中截获它，然后使用该授权码冒充合法客户端去交换访问令牌。</p>
+<p>为了解决这一漏洞，PKCE（Proof Key for Code Exchange，发音为“pixy”）被引入 ^32^。PKCE通过在授权流程中添加额外的步骤来增强安全性，确保只有启动授权流程的客户端才能完成它 ^32^。</p>
+<p>PKCE的工作原理如下：</p>
+<ol>
+<li><strong>客户端生成 <code class="notranslate">code_verifier</code>：</strong> 客户端在发起授权请求之前，会生成一个高强度的随机字符串，称为 <code class="notranslate">code_verifier</code>。</li>
+<li><strong>生成 <code class="notranslate">code_challenge</code>：</strong> 客户端使用 <code class="notranslate">SHA256</code> 算法对 <code class="notranslate">code_verifier</code> 进行哈希处理，并进行 <code class="notranslate">Base64URL</code> 编码，生成 <code class="notranslate">code_challenge</code> ^28^。</li>
+<li><strong>发送授权请求：</strong> 客户端将 <code class="notranslate">code_challenge</code> 和 <code class="notranslate">code_challenge_method</code>（通常是<code class="notranslate">S256</code>）连同其他授权参数一起发送给授权服务器的授权端点 ^28^。</li>
+<li><strong>交换授权码：</strong> 授权服务器颁发授权码给客户端。</li>
+<li><strong>交换令牌时验证：</strong> 客户端在向令牌端点交换访问令牌时，除了授权码外，还需要将原始的 <code class="notranslate">code_verifier</code> 发送给授权服务器。授权服务器会再次对 <code class="notranslate">code_verifier</code> 进行哈希计算，并将其与之前收到的 <code class="notranslate">code_challenge</code> 进行比对。如果两者匹配，则证明是原始客户端在请求令牌，从而颁发访问令牌 ^32^。</li>
+</ol>
+<p>PKCE的引入，使得即使授权码被拦截，攻击者也无法在没有 <code class="notranslate">code_verifier</code> 的情况下成功交换访问令牌。这对于公共客户端至关重要，因为它消除了对客户端密钥的依赖，同时提供了与机密客户端相似的安全级别 ^32^。OAuth 2.1规范已将PKCE要求扩展到所有使用授权码流程的客户端，包括机密客户端，以进一步提高整体安全性 ^21^。</p>
+<h4>客户端凭证授权类型 (Client Credentials Grant): 适用于机器对机器交互</h4>
+<p>客户端凭证授权类型（Client Credentials Grant）是一种特殊的OAuth 2.0授权流程，它允许应用程序直接使用其自身的凭证（客户端ID和客户端密钥）来获取访问令牌，而无需代表任何特定用户 ^1^。这种授权类型通常被称为“两足OAuth”（two-legged OAuth），因为它不涉及资源所有者（用户）的直接参与。</p>
+<p>这种授权类型主要用于服务器到服务器（server-to-server）的交互场景，或者那些需要在后台运行而无需用户即时干预的自动化进程，例如守护程序（daemons）或服务账户（service accounts） ^35^。在这种流程中，权限是直接授予应用程序本身的，通常由管理员进行配置 ^35^。</p>
+<p><strong>流程概述：</strong></p>
+<ol>
+<li><strong>客户端请求令牌：</strong> 客户端应用程序（机密客户端）直接向授权服务器的令牌端点发起POST请求。此请求包含客户端ID和客户端密钥，通常通过HTTP基本认证或在请求体中作为表单参数提供 ^22^。</li>
+<li><strong>授权服务器颁发令牌：</strong> 授权服务器验证客户端凭证的有效性。如果凭证正确，授权服务器会直接向客户端颁发访问令牌 ^22^。</li>
+<li><strong>客户端访问受保护资源：</strong> 客户端使用获取到的访问令牌，以其自身的身份（而非用户身份）访问资源服务器上受保护的资源 ^35^。资源服务器在接收到这种类型的令牌时，会根据令牌中包含的应用程序ID和权限信息来执行授权检查 ^35^。</li>
+</ol>
+<p>客户端凭证授权类型简化了机器对机器通信的授权过程，避免了不必要的用户交互。然而，由于应用程序自身的凭证被用于认证，这些凭证必须得到极其安全的保护，绝不能硬编码在代码中或暴露在公共环境中 ^13^。</p>
+<h4>已弃用或不推荐的授权类型</h4>
+<p>随着OAuth 2.0生态系统的发展和安全威胁的演变，一些最初定义的授权类型因其固有的安全缺陷或更优替代方案的出现而被弃用或强烈不推荐使用。</p>
+<p><strong>隐式授权 (Implicit Grant): 为什么被弃用</strong></p>
+<p>隐式授权类型（Implicit Grant）曾主要用于单页应用程序（SPAs）或移动应用程序，在这些场景下，客户端无法安全地存储客户端密钥 ^1^。在这种流程中，访问令牌直接通过重定向URI的片段（fragment）部分返回给客户端，而无需中间的授权码交换步骤 ^1^。</p>
+<p>然而，隐式授权因其固有的安全漏洞而被正式弃用 ^17^。主要原因包括：</p>
+<ul>
+<li><strong>访问令牌泄露风险：</strong> 访问令牌直接暴露在浏览器的URI中，容易被恶意脚本（如通过跨站脚本XSS攻击）或浏览器历史记录、HTTP日志等方式截获 ^17^。</li>
+<li><strong>无法进行发送者约束：</strong> 隐式授权颁发的令牌无法进行“发送者约束”（sender-constrained），这意味着攻击者一旦窃取了令牌，就可以在没有额外凭证的情况下重放该令牌，资源服务器也无法有效检测重放攻击 ^18^。</li>
+<li><strong>缺乏刷新令牌支持：</strong> 隐式授权不支持颁发刷新令牌 ^15^，这意味着访问令牌过期后，用户必须重新进行完整的授权流程，影响用户体验。</li>
+</ul>
+<p>由于这些安全缺陷，OAuth 2.1规范已明确移除了隐式授权 ^21^。现在，对于单页应用和移动应用，强烈推荐使用</p>
+<p><strong>授权码授权类型与PKCE扩展</strong>相结合的方式，它提供了更高的安全性，且无需客户端密钥 ^28^。</p>
+<p><strong>资源所有者密码凭证授权 (Resource Owner Password Credentials Grant): 为什么不推荐</strong></p>
+<p>资源所有者密码凭证授权类型（Resource Owner Password Credentials Grant，简称ROPC）允许客户端应用程序直接收集用户的用户名和密码，然后将其发送给授权服务器以获取访问令牌 ^1^。</p>
+<p>尽管这种方式看似简单直接，但它严重违背了OAuth 2.0的核心设计理念——即在不暴露用户凭证的情况下进行委托授权 ^26^。ROPC被强烈不推荐使用，原因如下 ^26^：</p>
+<ul>
+<li><strong>直接暴露用户凭证：</strong> 客户端直接处理用户的敏感凭证，这极大地增加了凭证泄露的风险，包括网络钓鱼、键盘记录以及不安全的凭证存储 ^26^。一旦客户端应用程序被攻破，用户的用户名和密码将直接暴露。</li>
+<li><strong>绕过安全委托原则：</strong> ROPC绕过了OAuth旨在实现的“委托访问”核心原则。OAuth的初衷是让应用程序在不直接访问用户凭证的情况下获取令牌。</li>
+<li><strong>与多因素认证（MFA）不兼容：</strong> 大多数ROPC实现与多因素认证（MFA）不兼容 ^38^。如果用户需要MFA才能登录，ROPC流程将无法工作，这限制了其在现代安全环境中的适用性。</li>
+<li><strong>难以处理密码更改/过期：</strong> 客户端需要自行处理密码更改、过期或管理员重置等情况，增加了复杂性。</li>
+<li><strong>高信任度要求：</strong> 这种授权类型仅适用于资源所有者与客户端之间存在高度信任的场景（例如，客户端是操作系统的一部分或高度特权的应用）^37^。但在大多数第三方应用场景中，这种信任度是不存在的。</li>
+</ul>
+<p>OAuth 2.1规范已正式移除了ROPC授权类型 ^21^。对于需要用户认证的场景，应始终优先使用授权码授权类型（结合PKCE），它将用户认证的责任完全交由授权服务器处理，从而保护了用户凭证的安全。</p>
+<h3>OAuth 2.0 与 OpenID Connect (OIDC): 授权与认证的结合</h3>
+<p>在身份和访问管理领域，OAuth 2.0和OpenID Connect (OIDC) 是两个经常被提及但作用不同的协议。理解它们之间的关系对于构建全面的安全解决方案至关重要。</p>
+<h4>OIDC 如何扩展 OAuth 2.0</h4>
+<p>如前所述，OAuth 2.0是一个纯粹的<strong>授权</strong>框架，它专注于“什么可以被访问”以及“谁被允许访问什么” ^1^。它提供了一种机制，允许第三方应用程序代表用户访问受保护的资源，而无需获取用户的凭证。然而，OAuth 2.0本身并不提供关于“你是谁”的</p>
+<p><strong>身份验证</strong>信息，也不提供标准化机制来验证用户身份或获取用户属性 ^2^。</p>
+<p>OpenID Connect (OIDC) 正是为了弥补OAuth 2.0在身份验证方面的不足而诞生的。OIDC是一个构建在OAuth 2.0之上的身份层，它扩展了OAuth 2.0，使其成为一个完整的身份验证和授权解决方案 ^2^。</p>
+<p>OIDC通过以下方式扩展了OAuth 2.0：</p>
+<ol>
+<li><strong>引入 ID Token：</strong> OIDC引入了一种新的令牌类型——ID Token。ID Token是一个JSON Web Token (JWT)，它包含了关于已认证用户身份的信息和声明（claims），例如用户ID、姓名、电子邮件等 ^9^。客户端可以解析这个JWT来验证用户身份并获取其基本资料，而访问令牌（Access Token）则继续用于访问受保护的资源。</li>
+<li><strong>标准化端点和流程：</strong> 尽管OAuth 2.0是一个框架，留有许多实现细节的自由度，但OIDC对许多端点和流程进行了标准化，例如授权端点、令牌端点以及如何请求和接收ID Token的流程 ^10^。这促进了不同OIDC提供商和客户端之间的互操作性。</li>
+<li><strong>用户身份声明：</strong> OIDC定义了标准化的用户身份声明（claims），这些声明可以通过ID Token或通过用户资料端点（UserInfo Endpoint）获取，确保了身份信息的统一交换 ^10^。</li>
+</ol>
+<p>这种扩展使得OAuth 2.0框架能够作为构建认证协议的基础，实现了授权与认证的有效结合。这种结合允许企业实现单点登录（SSO）和更精细的身份管理，同时保持了OAuth 2.0在委托授权方面的优势 ^2^。</p>
+<h4>各自的适用场景</h4>
+<p>理解OAuth 2.0和OIDC各自的侧重点，有助于在实际应用中做出正确的选择：</p>
+<ul>
+<li><strong>OAuth 2.0 的适用场景：</strong>
+<ul>
+<li><strong>API 授权和委托访问：</strong> OAuth 2.0是为API授权和委托访问场景量身定制的。当应用程序需要访问用户在另一个服务中的资源（例如，读取日历事件、发布社交媒体帖子、访问云存储文件）时，OAuth 2.0是理想的选择 ^1^。</li>
+<li><strong>微服务架构中的细粒度访问控制：</strong> 在微服务架构中，OAuth 2.0提供了实现集中式授权服务器、定义粒度化作用域、颁发和验证访问令牌以及管理服务间认证的框架 ^10^。</li>
+<li><strong>不关心用户身份的场景：</strong> 如果应用程序仅需要访问资源而不需要明确知道用户的身份（例如，一个后台服务仅需上传文件到用户云盘，而无需显示用户姓名），OAuth 2.0即可满足需求。</li>
+</ul>
+</li>
+<li><strong>OpenID Connect (OIDC) 的适用场景：</strong>
+<ul>
+<li><strong>用户身份验证和单点登录 (SSO)：</strong> OIDC是专为验证用户身份而设计的，是实现单点登录（SSO）的首选协议 ^9^。当应用程序需要验证“谁是用户”并获取其身份信息时，OIDC提供了标准化的解决方案。</li>
+<li><strong>需要用户身份信息的应用：</strong> 任何需要显示用户姓名、头像、电子邮件地址等身份信息的应用程序，都应使用OIDC来安全、标准化地获取这些信息。</li>
+<li><strong>统一身份管理：</strong> 对于需要跨多个应用程序和系统进行统一身份管理的复杂企业环境，OIDC提供了强大的基础。</li>
+</ul>
+</li>
+</ul>
+<p>简而言之，如果仅仅需要​<strong>授权</strong>​（控制用户可以访问哪些资源），OAuth 2.0可能就足够了。但如果需要​<strong>认证</strong>​（验证用户身份）以及授权，那么OpenID Connect是更合适的选择 ^10^。在许多现代企业级解决方案中，通常会同时实现这两种协议，以提供最全面的身份和访问管理能力。</p>
+<h3>OAuth 2.0 安全最佳实践</h3>
+<p>OAuth 2.0虽然提供了强大的授权框架，但其安全性高度依赖于正确的实现和遵循最佳实践。忽视这些实践可能导致严重的安全漏洞。</p>
+<h4>HTTPS 的强制使用</h4>
+<p>所有OAuth 2.0相关的通信，包括客户端与授权服务器之间、客户端与资源服务器之间以及用户代理与授权服务器之间的所有请求，都<strong>必须</strong>通过HTTPS（HTTP Secure）进行传输 ^23^。HTTPS通过TLS/SSL协议提供加密和身份验证，从而有效防止了多种攻击：</p>
+<ul>
+<li><strong>中间人攻击 (Man-in-the-Middle Attacks)：</strong> HTTPS确保了通信的机密性和完整性，防止攻击者窃听敏感信息（如授权码、访问令牌、客户端密钥）或篡改传输中的数据 ^23^。</li>
+<li><strong>凭证泄露：</strong> 即使是短暂的HTTP通信也可能导致敏感凭证（如客户端密钥）在传输过程中被截获 ^23^。强制使用HTTPS消除了这种风险。</li>
+</ul>
+<p>不使用HTTPS是OAuth 2.0实现中最常见的安全漏洞之一。因此，无论是客户端应用程序、授权服务器还是资源服务器，都应确保其所有OAuth相关端点仅通过HTTPS提供服务 ^23^。</p>
+<h4>客户端凭证和令牌的保护</h4>
+<p>客户端凭证（Client ID和Client Secret）和用户令牌（访问令牌和刷新令牌）是OAuth 2.0安全模型中的核心资产。它们的保护不当是导致安全事件的常见原因。</p>
+<ul>
+<li><strong>客户端密钥的保护：</strong>
+<ul>
+<li><strong>机密性：</strong> 客户端密钥必须被视为高度机密信息，仅由客户端应用程序和授权服务器知晓 ^22^。</li>
+<li><strong>存储：</strong> 绝不能将客户端密钥硬编码在源代码中、提交到公共代码仓库、嵌入到客户端JavaScript文件或存储在可从外部访问的文件（如Web服务器上的配置文件、日志文件）中 ^13^。推荐使用安全的秘密管理器（如Google Cloud Secret Manager）来存储和管理这些凭证 ^24^。</li>
+<li><strong>传输：</strong> 在交换授权码以获取访问令牌时，客户端密钥会作为请求的一部分发送。务必确保此请求通过HTTPS安全传输，并且不向公众暴露 ^23^。</li>
+<li><strong>公共客户端：</strong> 对于无法安全存储客户端密钥的公共客户端（如桌面或移动应用），应避免使用客户端密钥认证，并转而依赖PKCE等机制 ^22^。</li>
+</ul>
+</li>
+<li><strong>用户令牌（访问令牌和刷新令牌）的保护：</strong>
+<ul>
+<li><strong>安全存储：</strong> 访问令牌和刷新令牌必须安全地存储在应用程序中，避免存储在不安全或易于访问的位置（如客户端文件、JavaScript或HTML文件）^23^。建议使用平台特定的安全存储系统，如Android上的KeyStore、iOS/macOS上的Keychain Services或Windows上的Credential Locker ^24^。对于存储多个用户令牌的服务器端应用程序，应加密存储并确保数据存储不可公开访问 ^24^。</li>
+<li><strong>传输：</strong> 始终通过安全的HTTPS连接传输访问令牌 ^23^。</li>
+<li><strong>生命周期管理：</strong> 令牌一旦不再需要，应立即撤销并从系统中永久删除 ^24^。应用程序还应妥善处理刷新令牌的失效和过期情况，例如在令牌无效时提示用户重新登录或清理相关数据 ^24^。</li>
+<li><strong>重用：</strong> 访问令牌不应一次性使用后立即丢弃。API调用获取OAuth令牌通常受速率限制，因此应缓存并重用令牌直至其过期，以避免达到调用限制 ^23^。</li>
+</ul>
+</li>
+</ul>
+<h4>重定向URI的严格验证</h4>
+<p>重定向URI（Redirect URI）的严格验证是防止OAuth 2.0攻击的关键防御措施 ^21^。授权服务器在处理授权请求时，必须严格检查请求中提供的</p>
+<p><code class="notranslate">redirect_uri</code> 是否与客户端预先注册的URI完全一致 ^21^。</p>
+<ul>
+<li><strong>防止令牌泄露：</strong> 如果授权服务器对 <code class="notranslate">redirect_uri</code> 的验证不够严格，攻击者可能会利用这一点，通过构造一个恶意的重定向URI来截获授权码或访问令牌，从而导致“授权码泄露攻击” ^25^。</li>
+<li><strong>精确匹配：</strong> 推荐的最佳实践是使用精确的URI字符串匹配，而非模糊匹配或通配符匹配，因为后者已被证明存在安全漏洞 ^21^。</li>
+<li><strong>URI格式限制：</strong> 重定向URI必须是绝对URI，且不能包含片段标识符（<code class="notranslate">#</code>），也不能使用可疑的URI方案（如<code class="notranslate">data:</code>、<code class="notranslate">javascript:</code>、<code class="notranslate">vbscript:</code>）^23^。</li>
+</ul>
+<p>OAuth 2.1规范明确要求重定向URI必须使用精确字符串匹配 ^21^，这进一步强化了这一安全要求。</p>
+<h4>状态参数 (State Parameter) 与 CSRF 防护</h4>
+<p><code class="notranslate">state</code> 参数是OAuth 2.0授权请求中的一个可选但<strong>强烈推荐</strong>的参数，用于维护客户端请求和授权服务器响应之间的状态 ^11^。其主要安全作用是防止跨站请求伪造（CSRF）攻击 ^23^。</p>
+<ul>
+<li><strong>工作原理：</strong> 客户端在发起授权请求时，会生成一个不可预测的随机字符串作为 <code class="notranslate">state</code> 参数，并将其存储在用户会话中（例如，在cookie或服务器端会话中）。授权服务器在将用户重定向回客户端的重定向URI时，会原样返回这个 <code class="notranslate">state</code> 参数 ^11^。</li>
+<li><strong>CSRF 防护：</strong> 客户端在接收到授权服务器的响应后，会验证返回的 <code class="notranslate">state</code> 参数是否与之前存储在用户会话中的 <code class="notranslate">state</code> 参数完全匹配。如果 <code class="notranslate">state</code> 不匹配，则表明响应可能不是由合法用户发起的，可能存在CSRF攻击，此时应拒绝该请求 ^23^。</li>
+</ul>
+<p>通过使用 <code class="notranslate">state</code> 参数，应用程序可以确保授权响应属于由同一用户发起的请求，从而有效抵御CSRF攻击。</p>
+<h4>增量授权 (Incremental Authorization)</h4>
+<p>增量授权（Incremental Authorization）是一种最佳实践，旨在提升用户体验和安全性 ^24^。其核心思想是：应用程序只在真正需要时才请求OAuth作用域（权限），而不是在用户首次认证时就一次性请求所有可能的权限 ^24^。</p>
+<ul>
+<li><strong>按需请求：</strong> 应用程序应遵循“最小权限原则”，在用户选择需要特定权限的功能时，才发起授权请求 ^24^。例如，一个应用不应在用户首次登录时就请求Google日历访问权限，而应在用户点击“添加到日历”按钮时再请求 ^24^。</li>
+<li><strong>提升用户信任：</strong> 这种做法有助于用户理解应用程序请求特定权限的原因及其使用方式，从而更有可能获得用户的同意 ^24^。</li>
+<li><strong>降低风险：</strong> 即使某个功能出现漏洞，由于权限是按需授予的，其影响范围也会被限制在已授权的特定作用域内。</li>
+<li><strong>处理拒绝：</strong> 应用程序应妥善处理用户拒绝授予某些作用域的情况，例如禁用相关功能，并向用户提供上下文解释，以便他们可以根据需要再次请求访问 ^24^。</li>
+</ul>
+<p>通过实施增量授权，开发者可以构建更安全、更用户友好的应用程序，同时优化权限管理。</p>
+<h3>OAuth 2.1 的演进</h3>
+<p>OAuth 2.0自2012年发布以来，随着Web应用和移动应用生态的快速发展，其核心规范在实践中暴露出一些安全漏洞和不足。为了解决这些问题，并整合多年来发布的各种扩展和最佳实践，OAuth 2.1应运而生 ^21^。OAuth 2.1并非引入了全新的功能，而是将多个关键的OAuth 2.0 RFCs（Request for Comments）和安全最佳实践整合到一个更清晰、更安全的基线文档中 ^21^。</p>
+<h4>主要变化和安全改进</h4>
+<p>OAuth 2.1的主要目标是简化核心文档，同时强制执行更严格的安全要求。其核心变化和安全改进包括：</p>
+<ol>
+<li><strong>PKCE 成为授权码流程的强制要求：</strong>
+<ul>
+<li><strong>变化：</strong> 对于所有使用授权码流程的OAuth客户端，PKCE（Proof Key for Code Exchange）现在是强制性的 ^21^。</li>
+<li><strong>安全改进：</strong> 这解决了公共客户端（如单页应用和移动应用）在授权码拦截攻击方面的脆弱性，因为它们无法安全存储客户端密钥 ^32^。通过PKCE，即使授权码被截获，没有匹配的<br>
+<code class="notranslate">code_verifier</code> 也无法交换访问令牌，从而大大增强了安全性。</li>
+</ul>
+</li>
+<li><strong>严格的重定向URI匹配：</strong>
+<ul>
+<li><strong>变化：</strong> 重定向URI必须使用精确的字符串匹配进行比较 ^21^。</li>
+<li><strong>安全改进：</strong> 这关闭了OAuth 2.0中一个常见的安全漏洞，即由于模糊匹配或通配符匹配而导致的客户端配置错误和令牌截获风险 ^26^。精确匹配确保了授权响应只发送到预期的、安全的端点。</li>
+</ul>
+</li>
+<li><strong>隐式授权类型被移除：</strong>
+<ul>
+<li><strong>变化：</strong> 隐式授权（Implicit Grant）类型已从OAuth 2.1规范中移除 ^21^。</li>
+<li><strong>安全改进：</strong> 隐式授权因其固有的安全漏洞（如访问令牌在URI中泄露、无法进行发送者约束）而被弃用 ^17^。移除该流程强制客户端采用更安全的授权码流程（结合PKCE）。</li>
+</ul>
+</li>
+<li><strong>资源所有者密码凭证授权类型被移除：</strong>
+<ul>
+<li><strong>变化：</strong> 资源所有者密码凭证授权（Resource Owner Password Credentials Grant）类型也已从OAuth 2.1规范中移除 ^21^。</li>
+<li><strong>安全改进：</strong> 这种授权类型要求客户端直接处理用户的用户名和密码，这违背了OAuth的核心设计理念，并带来了巨大的安全风险（如凭证泄露、与MFA不兼容）^26^。移除该流程强制开发者采用更安全的委托授权方式。</li>
+</ul>
+</li>
+<li><strong>Bearer Token 使用规范：</strong>
+<ul>
+<li><strong>变化：</strong> Bearer Token（不记名令牌）的使用不再允许在URI的查询字符串中传输 ^21^。</li>
+<li><strong>安全改进：</strong> 这减少了令牌在服务器日志或浏览器历史记录中意外泄露的风险。Bearer Token应始终通过HTTP请求头（Authorization: Bearer ）进行传输。</li>
+</ul>
+</li>
+<li><strong>公共客户端刷新令牌的约束：</strong>
+<ul>
+<li><strong>变化：</strong> 公共客户端的刷新令牌必须是“发送者受限”或“一次性使用”的 ^21^。</li>
+<li><strong>安全改进：</strong> 这增加了刷新令牌被窃取后重放的难度，进一步提升了公共客户端的安全性。</li>
+</ul>
+</li>
+</ol>
+<p>OAuth 2.1的这些变化反映了行业对更强安全态势的共识，并为开发者提供了更清晰、更安全的OAuth实现指南。遵循OAuth 2.1规范有助于构建更健壮、更抵御攻击的应用程序。</p>
+<h3>总结</h3>
+<p>OAuth 2.0作为一个开放的授权框架，彻底改变了第三方应用程序访问用户数据的方式，通过“委托授权”范式，极大地提升了互联网服务的安全性。它将用户凭证处理的责任集中到授权服务器，从而有效降低了客户端应用程序泄露用户敏感信息的风险。此外，通过“作用域”机制，OAuth 2.0严格遵循了“最小权限原则”，确保应用程序仅获得其完成特定任务所需的最低权限，即便访问令牌意外泄露，其潜在影响也得以最小化。这种设计模式不仅增强了用户信任，也为开发者提供了构建安全应用的明确指导。</p>
+<p>OAuth 2.0与OpenID Connect (OIDC) 的关系，进一步阐明了授权与认证的“关注点分离”原则。OAuth 2.0专注于“可以访问什么”，而OIDC则在其基础上增加了“你是谁”的身份验证层，通过ID Token提供了标准化的用户身份信息。这种模块化和可扩展性使得两者能够协同工作，共同满足从简单的API访问到复杂的单点登录和统一身份管理等多样化需求。</p>
+<p>然而，OAuth 2.0的强大功能也伴随着对正确实现和严格遵循安全最佳实践的依赖。强制使用HTTPS、对客户端凭证和用户令牌的严格保护、对重定向URI的精确验证、利用 <code class="notranslate">state</code> 参数防御CSRF攻击以及采用增量授权，都是确保OAuth 2.0部署安全的关键要素。这些实践共同构筑了一道防线，抵御了常见的网络攻击和配置错误。</p>
+<p>OAuth 2.1的出现，标志着OAuth协议在安全性上的又一次重要演进。通过将PKCE强制应用于所有授权码流程、移除隐式授权和资源所有者密码凭证授权等不安全或不推荐的授权类型，并加强了重定向URI匹配和Bearer Token的使用规范，OAuth 2.1为开发者提供了更清晰、更安全的实施基线。这不仅简化了开发者的选择，也促使整个生态系统向更强的安全标准靠拢。</p>
+<p>对于开发者而言，深入理解OAuth 2.0的核心概念、角色、授权类型及其演进，并严格遵循其安全最佳实践，是构建现代化、安全、可信赖应用程序的基石。随着数字身份和数据共享的日益复杂，OAuth 2.0及其后续演进将继续在保护用户隐私和数据安全方面发挥不可或缺的作用。</p>
+<p>附1：部分生产环境代码</p>
+<pre class="notranslate"><code class="notranslate">
+
+/**
+ * DRM accessToken 生成器
+ */
+@Component
+@RefreshScope
+@Slf4j
+public class NSAccessTokenGenerator {
+
+    //    private static final String CONSUMER_KEY = "18b87bb81520b848f45dc09ae037e909e750ce186ad4c22e8dd8c211a44fc906";
+//    private static final String CONSUMER_SECRET = "beef57fe117bb7a4314f3704a2d8d00f38e6df0e326741dad4afda5e68a2f05a";
+//    private static final String TOKEN_ID = "333b87088f9b2516f069057aeacf665e20f69326428e13d5a757e5ed44b0b0e0";
+//    private static final String TOKEN_SECRET = "967f5300e15d2c49d008cca288f6776e385309f1afb8daef0ad4b8e8f3f2448c";
+    private static final String REST_URL = "https://6740337-sb1.restlets.api.netsuite.com/app/site/hosting/restlet.nl?script=302&amp;deploy=1";
+    //    private static final String REALM = "6740337_SB1";
+//    private static final String CONTENT_TYPE = "Content-Type";
+//    private static final String APP_JSON = "application/json";
+    private static final String EMPTY_JSON_PAYLOAD = "{" +
+            "\"datefrom\": \"2015-03-09 12:24:01\"" +
+            "}";
+
+    //NS接口用  测试环境鉴权信息
+    public static String CONSUMER_KEY ;
+    public static String CONSUMER_SECRET ;
+    public static String TOKEN_ID ;
+    public static String TOKEN_SECRET ;
+    public static String REALM  ;
+    public static String CONTENT_TYPE  ;
+    public static String APP_JSON ;
+
+
+
+    //======================================下面是NS测试环境配置  ============================================================
+    @Value("${ns.oauth.CONSUMER_KEY}")
+    public void setConsumerKey(String CONSUMER_KEY) {
+        NSAccessTokenGenerator.CONSUMER_KEY = CONSUMER_KEY;
+    }
+
+    @Value("${ns.oauth.CONSUMER_SECRET}")
+    public void setConsumerSecret(String CONSUMER_SECRET) {
+        NSAccessTokenGenerator.CONSUMER_SECRET = CONSUMER_SECRET;
+    }
+
+    @Value("${ns.oauth.TOKEN_ID}")
+    public void setTokenId(String TOKEN_ID) {
+        NSAccessTokenGenerator.TOKEN_ID = TOKEN_ID;
+    }
+
+    @Value("${ns.oauth.TOKEN_SECRET}")
+    public void setTokenSecret(String TOKEN_SECRET) {
+        NSAccessTokenGenerator.TOKEN_SECRET = TOKEN_SECRET;
+    }
+
+    @Value("${ns.oauth.REALM}")
+    public void setREALM(String REALM) {
+        NSAccessTokenGenerator.REALM = REALM;
+    }
+
+    @Value("${ns.oauth.CONTENT_TYPE}")
+    public void setContentType(String CONTENT_TYPE) {
+        NSAccessTokenGenerator.CONTENT_TYPE = CONTENT_TYPE;
+    }
+
+    @Value("${ns.oauth.APP_JSON}")
+    public void setAppJson(String APP_JSON) {
+        NSAccessTokenGenerator.APP_JSON = APP_JSON;
+    }
+
+
+    private static OAuthService service = null;
+    private static Token accessToken = null;
+
+    private static OAuthService serviceProd = null;
+    private static Token accessTokenProd = null;
+
+
+    //===========结算test环境，调用NS生产系统 start
+    private static OAuthService serviceByParam = null;
+    private static Token accessTokenByParam = null;
+    //===========结算test环境，调用NS生产系统 end
+
+    public static void main(String[] args) {
+        Response responsePost = callWithHttpPost();
+        log.info(responsePost.getBody());
+        log.info(callByJsonBody("{\"datefrom\": \"2020/06/01 12:24:01\"}"));
+//        String nonce = RandomStringUtils.randomAlphanumeric(11);
+//        log.info(nonce);
+
+    }
+
+    private static Response callWithHttpGet() {
+        OAuthRequest request = new OAuthRequest(Verb.GET, REST_URL);
+        request.setRealm(REALM);
+        if(service == null){
+            service = getService();
+        }
+        if(accessToken == null){
+            accessToken =getToken();
+        }
+        service.signRequest(accessToken, request);
+        return request.send();
+    }
+
+    /**
+     * 与请求的顺序有关，注意调用的方法是 256
+     * Authorization:
+     * OAuth realm="12345",
+     * oauth_consumer_key="4a3ff6c251a55057bb1e62d8dc8998a0366e88f3a8fe735265fc425368b0f154",
+     * oauth_token="52cfe88fecf2e2b74e833e7dfc4cae79ff44c3ca9f696d61e2a7eac6c8357c3c",
+     * oauth_nonce="qUwlmPvtGCS4sHJe8F7x",
+     * oauth_timestamp="1462453273",
+     * oauth_signature_method="HMAC-SHA256", oauth_version="1.0",
+     * oauth_signature="8PI9lIYxUmUONjxEFJUSMD9oOmc%3D"
+     */
+    public static Response callWithHttpPost() {
+        OAuthRequest request = new OAuthRequest(Verb.POST, REST_URL);
+        request.setRealm(REALM);
+        request.addHeader(CONTENT_TYPE, APP_JSON);
+        request.addPayload(EMPTY_JSON_PAYLOAD);
+        if(service == null){
+            service = getService();
+        }
+        if(accessToken == null){
+            accessToken =getToken();
+        }
+        service.signRequest(accessToken, request, "HMAC-SHA256");
+//        request.addHeader("Connection", "keep-alive");
+//        request.addHeader("Accept", "*/*");
+//        request.addHeader("Host", "7048174-sb1.restlets.api.netsuite.com");
+//        request.addHeader("Content-Length", String.valueOf(EMPTY_JSON_PAYLOAD.length()));
+//        request.addHeader("User-Agent", "Mozilla/5.0");
+
+//        Map&lt;String, String&gt; headers =
+//                request.getHeaders();
+//        log.info(headers.get("Authorization") + ";;;;;;");
+        return request.send();
+    }
+
+    //重写callWithHttpPost() 动态传递url和参数
+    public  Response callWithHttpPost1(NsAccessTokenParameter nsAccessTokenParameter) {
+        OAuthRequest request = new OAuthRequest(Verb.POST, nsAccessTokenParameter.getUrl());
+        request.setRealm(REALM);
+        request.addHeader(CONTENT_TYPE, APP_JSON);
+        if (nsAccessTokenParameter.getParams() != null) {
+            String params = nsAccessTokenParameter.getParams();
+            request.addPayload(params);
+        }
+        //request.addPayload(EMPTY_JSON_PAYLOAD);
+        if(service == null){
+            service = getService();
+        }
+        if(accessToken == null){
+            accessToken =getToken();
+        }
+        service.signRequest(accessToken, request, "HMAC-SHA256");
+//        request.addHeader("Connection", "keep-alive");
+//        request.addHeader("Accept", "*/*");
+//        request.addHeader("Host", "7048174-sb1.restlets.api.netsuite.com");
+//        request.addHeader("Content-Length", String.valueOf(EMPTY_JSON_PAYLOAD.length()));
+//        request.addHeader("User-Agent", "Mozilla/5.0");
+
+//        Map&lt;String, String&gt; headers =
+//                request.getHeaders();
+//        log.info(headers.get("Authorization") + ";;;;;;");
+        return request.send();
+    }
+
+    /**
+     * ns生产环境
+     * @param nsAccessTokenParameter
+     * @return
+     */
+    @NsLog()
+    //重写callWithHttpPost() 动态传递url和参数
+    public  Response callWithHttpPost1Prod(NsAccessTokenParameter nsAccessTokenParameter) {
+        OAuthRequest request = new OAuthRequest(Verb.POST, nsAccessTokenParameter.getUrl());
+        request.setRealm(REALM);
+        request.addHeader(CONTENT_TYPE, APP_JSON);
+        if (nsAccessTokenParameter.getParams() != null) {
+            String params = nsAccessTokenParameter.getParams();
+            request.addPayload(params);
+        }
+        //request.addPayload(EMPTY_JSON_PAYLOAD);
+        if(service == null){
+            service = getServiceProd();
+        }
+        if(accessToken == null){
+            accessToken =getTokenProd();
+        }
+        service.signRequest(accessToken, request, "HMAC-SHA256");
+//        request.addHeader("Connection", "keep-alive");
+//        request.addHeader("Accept", "*/*");
+//        request.addHeader("Host", "7048174-sb1.restlets.api.netsuite.com");
+//        request.addHeader("Content-Length", String.valueOf(EMPTY_JSON_PAYLOAD.length()));
+//        request.addHeader("User-Agent", "Mozilla/5.0");
+
+//        Map&lt;String, String&gt; headers =
+//                request.getHeaders();
+//        log.info(headers.get("Authorization") + ";;;;;;");
+        return request.send();
+    }
+
+    /**  ns测试鉴权信息
+     * 重写  callWithHttpPost() 动态传递url和参数
+     *  发票请求，推送到ns接口使用
+     */
+    @NsLog()
+    public  Response NsInvoicecallWithHttpPost(NsAccessTokenParameter nsParameter) {
+        OAuthRequest request = new OAuthRequest(Verb.POST, nsParameter.getUrl());
+        request.setRealm(REALM);
+        request.addHeader(CONTENT_TYPE, APP_JSON);
+        if (StringUtil.isNotBlank(nsParameter.getParams())){
+            request.addPayload(nsParameter.getParams());
+        }
+        if(service == null){
+            service = getService();
+        }
+        if(accessToken == null){
+            accessToken =getToken();
+        }
+        service.signRequest(accessToken, request, "HMAC-SHA256");
+        return request.send();
+    }
+
+    /**
+     *使用NS生产系统鉴权信息
+     * 重写  callWithHttpPost() 动态传递url和参数
+     *  发票请求，推送到ns接口使用
+     */
+    @NsLog()
+    public  Response NsInvoicecallWithHttpPostProd(NsAccessTokenParameter nsParameter) {
+        OAuthRequest request = new OAuthRequest(Verb.POST, nsParameter.getUrl());
+        request.setRealm(REALM);
+        request.addHeader(CONTENT_TYPE, APP_JSON);
+        if (StringUtil.isNotBlank(nsParameter.getParams())){
+            request.addPayload(nsParameter.getParams());
+        }
+        if(serviceProd == null){
+            serviceProd = getServiceProd();
+        }
+        if(accessTokenProd == null){
+            accessTokenProd =getTokenProd();
+        }
+        serviceProd.signRequest(accessTokenProd, request, "HMAC-SHA256");
+        return request.send();
+    }
+
+
+
+    /**
+     *结算test环境，调用NS生产系统
+     *
+     */
+    @NsLog()
+    public  Response testConnectNsProd(NsAccessTokenParameter nsParameter) {
+        OAuthRequest request = new OAuthRequest(Verb.POST, nsParameter.getUrl());
+        request.setRealm("6740337");
+        request.addHeader("Content-Type", "application/json");
+        if (StringUtil.isNotBlank(nsParameter.getParams())){
+            request.addPayload(nsParameter.getParams());
+        }
+        if(serviceByParam == null){
+            serviceByParam = getServiceByParam();
+        }
+        if(accessTokenByParam == null){
+            accessTokenByParam =getTokenByParam();
+        }
+        serviceByParam.signRequest(accessTokenByParam, request, "HMAC-SHA256");
+        return request.send();
+    }
+
+
+    public static String callByJsonBody(String jsonStr) {
+        OAuthRequest request = new OAuthRequest(Verb.POST, REST_URL);
+        request.setRealm(REALM);
+        request.addHeader(CONTENT_TYPE, APP_JSON);
+        request.addPayload(jsonStr);
+        if(service == null){
+            service = getService();
+        }
+        if(accessToken == null){
+            accessToken =getToken();
+        }
+        service.signRequest(accessToken, request, "HMAC-SHA256");
+
+        return request.send().getBody();
+    }
+
+
+    /**
+     *使用NS测试系统鉴权信息
+     */
+    private static Token getToken() {
+        return new Token(TOKEN_ID, TOKEN_SECRET);
+    }
+
+    /**
+     *使用NS生产系统鉴权信息
+     */
+    private static Token getTokenProd() {
+        return new Token(TOKEN_ID, TOKEN_SECRET);
+    }
+
+
+    /**
+     *使用NS测试系统鉴权信息
+     */
+    private static OAuthService getService() {
+        return new ServiceBuilder().provider(DummyService.class)
+                .apiKey(CONSUMER_KEY).apiSecret(CONSUMER_SECRET)
+                .signatureType(SignatureType.Header).build();
+    }
+
+    /**
+     *使用NS生产系统鉴权信息
+     */
+
+    private static OAuthService getServiceProd() {
+        return new ServiceBuilder().provider(DummyService.class)
+                .apiKey(CONSUMER_KEY).apiSecret(CONSUMER_SECRET)
+                .signatureType(SignatureType.Header).build();
+    }
+
+
+}
+
+</code></pre></div>
 <div style="font-size:small;margin-top:8px;float:right;"></div>
 
 <button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
@@ -98,7 +744,7 @@ if(""!=""){
 </script></div>
 </body>
 <script>
-var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z'};
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z', 'copy': 'M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z', 'check': 'M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'};
 var utterancesLoad=0;
 
 let themeSettings={
@@ -171,7 +817,70 @@ function iFrameLoading(){
     }
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    const createClipboardHTML = (codeContent, additionalClasses = '') => `
+        <pre class="notranslate"><code class="notranslate">${codeContent}</code></pre>
+        <div class="clipboard-container position-absolute right-0 top-0 ${additionalClasses}">
+            <clipboard-copy class="ClipboardButton btn m-2 p-0" role="button" style="display: inherit;">
+                <svg height="16" width="16" class="octicon octicon-copy m-2"><path d="${IconList["copy"]}"></path></svg>
+                <svg height="16" width="16" class="octicon octicon-check color-fg-success m-2 d-none"><path d="${IconList["check"]}"></path></svg>
+            </clipboard-copy>
+            <div class="copy-feedback">Copied!</div>
+        </div>
+    `;
 
+    const handleCodeElements = (selector = '') => {
+        document.querySelectorAll(selector).forEach(codeElement => {
+            const codeContent = codeElement.innerHTML;
+            const newStructure = document.createElement('div');
+            newStructure.className = 'snippet-clipboard-content position-relative overflow-auto';
+            newStructure.innerHTML = createClipboardHTML(codeContent);
+
+            const parentElement = codeElement.parentElement;
+            if (selector.includes('highlight')) {
+                parentElement.insertBefore(newStructure, codeElement.nextSibling);
+                parentElement.removeChild(codeElement);
+            } else {
+                parentElement.parentElement.replaceChild(newStructure, parentElement);
+            }
+        });
+    };
+
+    handleCodeElements('pre.notranslate > code.notranslate');
+    handleCodeElements('div.highlight > pre.notranslate');
+
+    let currentFeedback = null;
+    document.querySelectorAll('clipboard-copy').forEach(copyButton => {
+        copyButton.addEventListener('click', () => {
+            const codeContent = copyButton.closest('.snippet-clipboard-content').innerText;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = codeContent;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            const copyIcon = copyButton.querySelector('.octicon-copy');
+            const checkIcon = copyButton.querySelector('.octicon-check');
+            const copyFeedback = copyButton.nextElementSibling;
+
+            if (currentFeedback && currentFeedback !== copyFeedback) {currentFeedback.style.display = 'none';}
+            currentFeedback = copyFeedback;
+
+            copyIcon.classList.add('d-none');
+            checkIcon.classList.remove('d-none');
+            copyFeedback.style.display = 'block';
+            copyButton.style.borderColor = 'var(--color-success-fg)';
+
+            setTimeout(() => {
+                copyIcon.classList.remove('d-none');
+                checkIcon.classList.add('d-none');
+                copyFeedback.style.display = 'none';
+                copyButton.style.borderColor = '';
+            }, 2000);
+        });
+    });
+});
 
 </script>
 
