@@ -526,7 +526,9 @@ public class ThreadLocalCleanupExample {
 <h2>总结</h2>
 <p><code class="notranslate">ThreadLocal</code> 是 Java 多线程应用程序中管理线程特定数据的一个强大而优雅的解决方案。它通过为每个线程提供其数据变量的独立副本，有效地简化了线程安全问题，并通过减少对显式同步机制的需求来提升应用程序性能，同时通过促进隐式上下文传播来简化代码设计。</p>
 <p>然而，如同任何强大的工具一样，<code class="notranslate">ThreadLocal</code> 必须负责任地使用，并对它的潜在影响有清晰的理解。其中最关键的方面是勤奋地清理工作：务必在 <code class="notranslate">finally</code> 块中调用 <code class="notranslate">remove()</code> 方法，尤其是在线程池环境中，以防止隐蔽且危险的内存泄漏。</p>
-<p>通过深入理解 <code class="notranslate">ThreadLocal</code> 的核心目的、内部工作机制，并严格遵循其最佳实践，开发者可以充分利用这一工具的优势，构建出健壮、高效且易于维护的并发应用程序。</p></div>
+<p>通过深入理解 <code class="notranslate">ThreadLocal</code> 的核心目的、内部工作机制，并严格遵循其最佳实践，开发者可以充分利用这一工具的优势，构建出健壮、高效且易于维护的并发应用程序。</p>
+<p>附1：泄露问题<br>
+<a target="_blank" rel="noopener noreferrer" href="https://github.com/user-attachments/assets/f97c6b8f-387b-4ec5-b637-2914f874654e"><img src="https://github.com/user-attachments/assets/f97c6b8f-387b-4ec5-b637-2914f874654e" alt="Image" style="max-width: 100%;"></a></p></div>
 <div style="font-size:small;margin-top:8px;float:right;"></div>
 
 <button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>

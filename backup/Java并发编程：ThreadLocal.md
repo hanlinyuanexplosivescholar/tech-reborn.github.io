@@ -466,3 +466,8 @@ public class ThreadLocalCleanupExample {
 然而，如同任何强大的工具一样，`ThreadLocal` 必须负责任地使用，并对它的潜在影响有清晰的理解。其中最关键的方面是勤奋地清理工作：务必在 `finally` 块中调用 `remove()` 方法，尤其是在线程池环境中，以防止隐蔽且危险的内存泄漏。
 
 通过深入理解 `ThreadLocal` 的核心目的、内部工作机制，并严格遵循其最佳实践，开发者可以充分利用这一工具的优势，构建出健壮、高效且易于维护的并发应用程序。
+
+
+
+附1：泄露问题
+![Image](https://github.com/user-attachments/assets/f97c6b8f-387b-4ec5-b637-2914f874654e)
