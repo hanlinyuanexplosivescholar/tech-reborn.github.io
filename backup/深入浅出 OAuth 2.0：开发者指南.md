@@ -817,3 +817,7 @@ public class OAuth10aServiceImpl implements OAuthService {
     }
 }
 ```
+
+
+附2：流程图
+![Image](https://github.com/user-attachments/assets/bb768167-b27a-41cc-9b58-01e8f1ae3b0b)
