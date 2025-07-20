@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html data-color-mode="light" data-dark-theme="dark" data-light-theme="light" lang="zh-CN">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
+    
+    <link rel="icon" href="https://avatars.githubusercontent.com/u/68176923?v=4"><script>
+        let theme = localStorage.getItem("meek_theme") || "light";
+        document.documentElement.setAttribute("data-color-mode", theme);
+    </script>
+<meta name="description" content="## 引言：为何Tomcat的I/O模型至关重要？
+
+Apache Tomcat作为Java Web应用生态系统中的核心组件，被广泛用作Web服务器和Servlet容器。">
+<meta property="og:title" content="Tomcat网络I/O模型">
+<meta property="og:description" content="## 引言：为何Tomcat的I/O模型至关重要？
+
+Apache Tomcat作为Java Web应用生态系统中的核心组件，被广泛用作Web服务器和Servlet容器。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/Tomcat-wang-luo-I-O-mo-xing.html">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/68176923?v=4">
+<title>Tomcat网络I/O模型</title>
+
+
+
+</head>
+<style>
+body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
+#footer {margin-top:64px; text-align: center;font-size: small;}
+
+</style>
+
+<style>
+.postTitle{margin: auto 0;font-size:40px;font-weight:bold;}
+.title-right{display:flex;margin:auto 0 0 auto;}
+.title-right .circle{padding: 14px 16px;margin-right:8px;}
+#postBody{border-bottom: 1px solid var(--color-border-default);padding-bottom:36px;}
+#postBody hr{height:2px;}
+#cmButton{height:48px;margin-top:48px;}
+#comments{margin-top:64px;}
+.g-emoji{font-size:24px;}
+@media (max-width: 600px) {
+    body {padding: 8px;}
+    .postTitle{font-size:24px;}
+}
+
+</style>
+
+
+
+
+<body>
+    <div id="header">
+<h1 class="postTitle">Tomcat网络I/O模型</h1>
+<div class="title-right">
+    <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathHome" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+    <a href="https://github.com/hanlinyuanexplosivescholar/tech-reborn.github.io/issues/47" target="_blank" class="btn btn-invisible circle" title="Issue">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathIssue" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+
+    <a class="btn btn-invisible circle" onclick="modeSwitch();" title="切换主题">
+        <svg class="octicon" width="16" height="16" >
+            <path id="themeSwitch" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+
+</div>
+</div>
+    <div id="content">
+<div class="markdown-body" id="postBody"><h2>引言：为何Tomcat的I/O模型至关重要？</h2>
+<p>Apache Tomcat作为Java Web应用生态系统中的核心组件，被广泛用作Web服务器和Servlet容器。其轻量级、免费、快速启动的特性，以及提供大多数应用所需的基本功能，使其在Java团队中拥有高达36%的使用率，成为生产环境中的首选工具。作为HTTP连接器（Coyote）和Servlet容器（Catalina）的结合，Tomcat负责监听传入的HTTP请求，将其转发给内部引擎处理，并最终将响应返回给请求客户端。</p>
+<p>Web服务器的性能直接关系到用户体验、业务效率和转化率。有研究表明，页面加载时间每延迟一秒，可能导致转化率下降7%。因此，优化Tomcat性能至关重要。网络I/O模型是Tomcat处理并发请求、管理线程和系统资源（如CPU、内存、网络流量）效率的关键决定因素。不同的I/O模型在处理高并发连接、响应时间、线程利用率和CPU消耗方面表现各异。深入理解这些差异对于识别和解决性能瓶颈、优化资源分配至关重要。</p>
+<p>网络I/O模型是Tomcat性能的核心决定因素，而不仅仅是一个可配置的功能。系统监测数据显示，CPU、内存、磁盘I/O和网络流量常常是潜在的瓶颈。当底层网络I/O模型效率低下时，即使上层应用代码和JVM配置经过精心优化，也可能因为I/O等待时间过长或线程创建过多而导致性能受限。这表明I/O模型并非一个独立的功能模块，而是决定服务器处理负载和管理资源能力的基础架构选择。</p>
+<p>网络I/O模型与线程管理之间存在着紧密的相互作用。Tomcat的关键线程池指标，如当前忙碌线程数和最大线程数，直接反映了其并发处理能力。非异步请求在处理期间会占用一个线程。非阻塞I/O（NIO）和Apache Portable Runtime（APR）连接器能够以更少的线程处理更多请求，这得益于它们不同的线程模型。这种关系意味着所选的I/O模型直接决定了线程的分配和消耗方式。阻塞I/O（BIO）模型本质上将一个线程绑定到每个连接的整个生命周期，在高并发下会导致线程迅速耗尽。相反，非阻塞模型通过将连接的I/O状态与处理线程解耦，允许一个更小、更高效的线程池管理大量并发连接，从而直接影响了系统的可扩展性并降低了线程创建和上下文切换的开销。</p>
+<h2>I. BIO (Blocking I/O) 模型：传统与局限</h2>
+<h3>工作原理：一请求一线程的阻塞模式</h3>
+<p>在BIO模型中，Tomcat的HTTP连接器（<code class="notranslate">Http11Protocol</code>）为每个传入的客户端连接分配一个专用的处理线程。这个线程会一直阻塞，直到完成整个请求-响应周期，包括从网络读取请求头和请求体，以及向网络写入响应数据。即使客户端在HTTP Keep-Alive连接期间没有立即发送新的请求，或者由于网络延迟导致数据传输缓慢，该线程也会被持续占用，直到Keep-Alive超时或客户端主动关闭连接。Tomcat通过<code class="notranslate">maxThreads</code>属性限制可创建的最大线程数。当并发请求超过当前可用线程时，新的连接会在服务器套接字队列中排队。如果队列也满（达到<code class="notranslate">maxConnections</code>），操作系统会继续排队（受<code class="notranslate">acceptCount</code>限制），再多则可能被拒绝或超时。</p>
+<h3>特点与早期Tomcat版本中的应用</h3>
+<p>BIO连接器是Tomcat 7及更早版本中的默认连接器。在Tomcat 7中，默认的"HTTP/1.1"协议会通过一个自动切换机制来选择基于Java的阻塞连接器或APR/native连接器。其实现相对简单直观，对于并发连接数较少、请求处理时间较短的场景，性能表现尚可。作为Tomcat家族中最古老和最稳定的连接器之一，它在早期版本中被广泛应用。</p>
+<h3>优缺点分析：简单性与并发瓶颈</h3>
+<p>BIO模型的优点在于其编程模型简单，"一请求一线程"的模式直观易懂，易于开发和调试。此外，经过长时间的生产环境验证，其稳定性良好。</p>
+<p>然而，BIO模型存在显著的缺点。首先是低并发效率：每个连接占用一个线程，在高并发场景下，会迅速耗尽服务器的线程资源，导致大量的线程上下文切换开销，从而降低吞吐量，甚至引发内存溢出（OOM）错误。其次是资源浪费：线程在I/O等待期间被阻塞，无法处理其他请求，导致CPU利用率低下，尤其是在网络延迟高或存在大量长连接（如Keep-Alive空闲连接）的场景下。这使得其扩展性差，线程数量受限于操作系统和JVM的资源限制，难以有效应对突发流量或大规模并发请求。</p>
+<p>HTTP Keep-Alive连接在BIO模型中带来了一个潜在的成本。当客户端不明确关闭连接或设置<code class="notranslate">Connection:close</code>时，即使没有新的请求到达，处理该连接的线程也会一直被占用，直到Keep-Alive超时。这意味着，尽管HTTP Keep-Alive通常被视为通过复用TCP连接来减少开销的性能优化手段，但在BIO模型下，它反而可能成为一种负担。在高负载情况下，服务器宝贵的线程池中很大一部分可能会闲置，等待可能不会到来的后续请求，从而严重限制了服务器处理新的活跃连接的能力。这种对资源的“隐藏”浪费是Tomcat转向非阻塞I/O模型的重要原因之一。</p>
+<p>BIO模型的根本瓶颈在于其架构设计，而不仅仅是配置参数。尽管可以通过调整<code class="notranslate">maxThreads</code>、<code class="notranslate">maxConnections</code>和<code class="notranslate">acceptCount</code>等参数来在一定程度上管理负载，但BIO的核心限制在于其阻塞I/O范式本身。在阻塞API之上构建非阻塞服务被认为是极其困难的。这意味着BIO的性能和可扩展性限制是其固有设计所决定的，无法仅仅通过调整配置参数来完全克服。正是这种架构上的僵化，导致BIO最终在Tomcat的后续版本中被弃用并完全移除，而不是仅仅通过优化来使其在高并发下与非阻塞模型竞争。</p>
+<h2>II. NIO (Non-blocking I/O) 模型：性能飞跃的基石</h2>
+<h3>Java NIO核心机制：Selector与多路复用</h3>
+<p>NIO模型（<code class="notranslate">Http11NioProtocol</code>）基于Java的NIO库，其核心机制是<code class="notranslate">Selector</code>（选择器）。<code class="notranslate">Selector</code>提供了一种高效的机制，允许单个线程监控多个I/O通道（即网络连接），并在这些通道准备好进行I/O操作（如数据可读、可写、连接建立、连接接受）时通知应用程序。这种“I/O多路复用”（Multiplexing）技术使得Tomcat能够使用一个或少数几个线程来管理和处理成千上万的并发连接，从而避免了为每个连接分配一个专用线程所带来的资源开销。Tomcat的NIO连接器通常采用双线程池架构：<code class="notranslate">poller</code>线程池负责监听和分发I/O事件（如新连接、数据就绪），而<code class="notranslate">worker</code>线程池则负责处理具体的业务逻辑。<code class="notranslate">poller</code>线程也负责将数据发送回客户端，确保I/O操作的非阻塞性。</p>
+<h3>如何提升并发处理能力与线程效率</h3>
+<p>与BIO模型不同，NIO连接器在发送完响应后，处理请求的线程会立即返回到线程池，而不会被Keep-Alive连接长时间占用。这意味着即使客户端保持连接但处于空闲状态，也不会“浪费”一个线程。NIO的I/O操作（如读取请求头、SSL握手、等待下一个请求）都是非阻塞的。这意味着当一个I/O操作没有数据可读或可写时，线程不会停滞等待，而是可以立即切换去处理其他已经就绪的连接，从而显著提高了线程的利用率。这种机制显著减少了处理相同并发请求所需的线程数量，从而降低了线程创建和上下文切换的开销，极大地提高了服务器的吞吐量（TPS）。例如，一项测试显示，在相同线程数下，NIO在端口使用和TPS方面远优于BIO。</p>
+<h3>相较于BIO的显著优势</h3>
+<p>NIO模型相较于BIO模型具有显著优势。它能够以更少的线程处理更多的并发连接，特别适用于高流量和长连接（如WebSockets）场景，从而有效避免线程耗尽问题。由于线程不再阻塞等待I/O，CPU资源可以更有效地用于处理业务逻辑，提高了整体系统资源的使用效率。此外，NIO的非阻塞语义是实现WebSocket等现代Web技术的基础。Tomcat正是因为NIO的引入，才能够更好地支持这些需要持久连接和事件驱动通信的新协议。</p>
+<p>NIO是现代Web架构的重要推动者。研究表明，许多新的API和技术（例如WebSocket）需要非阻塞语义。这不仅仅是一个技术细节，它标志着Web应用设计理念的根本转变。现代应用越来越多地要求实时通信、持久连接和事件驱动模式。BIO的阻塞特性本质上阻碍了这些模式的实现，因为一个长时间存在的连接会无限期地占用一个线程。NIO通过将连接与线程解耦并实现高效的多路复用，使得这些架构在Tomcat中变得可行且可扩展。这使得Tomcat能够适应并支持当代Web开发的需求，表明Tomcat中I/O模型的演进不仅是为了提升原始性能，更是为了适应和推动Web开发新范式的发展。</p>
+<p>NIO在线程效率和CPU开销之间存在权衡。尽管NIO因其能够以更少线程处理更多请求而广受赞誉，但它确实比BIO需要更多的CPU资源。NIO“更少线程”的优势源于<code class="notranslate">Selector</code>机制及其事件循环管理的复杂性，这涉及到持续的轮询和I/O事件分发。这种多路复用逻辑在线程数量和整体吞吐量方面效率很高，但其自身的I/O层会比BIO的简单直接阻塞方法消耗更多的CPU周期。这意味着，虽然NIO通过避免线程耗尽显著提高了并发性和整体吞吐量，但它可能会增加单位I/O操作的CPU利用率。这种权衡对于系统架构师在规划服务器规模和优化性能时至关重要，因为“最佳”选择并非普遍适用，而是取决于应用程序是CPU密集型还是I/O密集型。</p>
+<h2>III. AIO (Asynchronous I/O) / NIO.2 模型：走向完全异步</h2>
+<h3>NIO.2的实现细节与异步特性</h3>
+<p>AIO（Asynchronous I/O），在Java中也被称为NIO.2（从Java 7开始引入），提供了真正的异步I/O操作。与NIO的“非阻塞”I/O（I/O操作会立即返回，但可能没有数据，需要后续轮询）不同，AIO是“异步”的：I/O操作一旦发起，会立即返回，并在操作完成（或失败）时通过回调（<code class="notranslate">CompletionHandler</code>）或<code class="notranslate">Future</code>对象通知应用程序。应用程序线程无需等待I/O完成，可以立即执行其他任务。Tomcat通过<code class="notranslate">Nio2Protocol</code>支持NIO.2，并在其HTTP连接器中利用异步写入（Asynchronous writes）功能，例如用于高效地发送大文件。</p>
+<h3>高并发场景下的潜在收益与Sendfile机制</h3>
+<p>在处理大量静态文件时，Tomcat的AIO/NIO2连接器可以利用<code class="notranslate">sendfile</code>机制。这种机制允许文件数据直接从操作系统内核空间发送到网络套接字，避免了数据在用户空间和内核空间之间的多次拷贝，从而显著提高效率，尤其是在系统负载增加时。通过在Servlet中设置特定的请求属性（如<code class="notranslate">org.apache.tomcat.sendfile.filename</code>、<code class="notranslate">start</code>、<code class="notranslate">end</code>）和正确的<code class="notranslate">Content-Length</code>头，可以指示Tomcat执行<code class="notranslate">sendfile</code>操作。AIO的完全异步特性在高并发、长连接和I/O密集型应用中具有巨大潜力，因为它进一步减少了应用程序线程的阻塞，提高了系统吞吐量。它将I/O操作的完成通知交给操作系统内核处理，应用程序线程在I/O进行时可以完全释放，专注于业务逻辑。</p>
+<p><code class="notranslate">sendfile</code>是一种跨协议的优化。研究表明，<code class="notranslate">sendfile</code>功能在APR或NIO/NIO2连接器上都受到支持。这一观察至关重要，它意味着<code class="notranslate">sendfile</code>是一种通用的I/O优化手段，无论底层Java I/O模型是NIO还是使用了原生（APR）能力，都可以利用它来提升性能。这表明对于静态内容服务，<code class="notranslate">sendfile</code>功能本身比NIO和NIO2之间的细微差异更能显著提升性能，并且可以广泛应用。这也暗示了动态内容和静态内容的最佳I/O模型选择可能有所不同，而<code class="notranslate">sendfile</code>在静态内容服务中提供了一个普遍的优势。</p>
+<p>完全异步性也带来了潜在的复杂性和陷阱。尽管AIO带来了显著优势，但如果所有线程都“死锁”在<code class="notranslate">CompletionHandler</code>中，整个应用程序可能会挂起，直到有线程空闲才能继续执行。这强调了，虽然AIO将I/O操作的执行卸载到内核，但I/O完成的处理仍然发生在应用程序管理的线程中。如果这些<code class="notranslate">CompletionHandler</code>回调本身执行阻塞或长时间运行的计算，或者处理这些完成的线程池耗尽，那么“异步”的优势就会被抵消。这可能导致应用程序层出现新的、更难调试的死锁或资源枯竭形式。这意味着AIO虽然强大，但需要更严格和规范的应用程序设计方法，才能真正实现其优势，并避免引入新的性能瓶颈。它并非一个“即发即忘”的解决方案。</p>
+<h3>与NIO的区别与适用性</h3>
+<p>NIO（非阻塞）模型下，应用程序需要主动检查I/O就绪事件（通过<code class="notranslate">Selector</code>轮询），然后进行I/O操作。它是一种“就绪时通知”模型。而AIO（异步）模型下，应用程序发起I/O操作后，立即返回，并在I/O完成时被动接收通知（回调）。它是一种“完成时通知”模型。尽管AIO在理论上提供了更高级别的异步性，但其在Tomcat中的应用不如NIO和APR广泛。在某些场景下，其性能优势可能不明显，甚至可能引入新的复杂性（例如，如果<code class="notranslate">CompletionHandler</code>中包含阻塞操作，可能导致线程死锁）。Tomcat 8.5及更高版本支持NIO2连接器。</p>
+<h2>IV. APR (Apache Portable Runtime) 模型：原生性能的释放</h2>
+<h3>利用操作系统原生API的原理 (如epoll, sendfile, OpenSSL)</h3>
+<p>APR连接器（<code class="notranslate">Http11AprProtocol</code>）允许Tomcat利用Apache Portable Runtime库，从而直接访问操作系统底层的原生I/O功能。这包括使用<code class="notranslate">sendfile</code>（与NIO/NIO2类似，用于高效传输文件）、<code class="notranslate">epoll</code>（Linux上高性能的I/O事件通知机制，优于传统的<code class="notranslate">select</code>/<code class="notranslate">poll</code>）以及OpenSSL进行SSL/TLS处理。通过直接调用原生API，APR可以提供卓越的扩展性、性能以及与原生服务器技术的更好集成，使得Java应用在某些方面能够达到接近C/C++程序的性能，从而使Java更适合作为通用Web服务器平台。</p>
+<p>APR是Java和操作系统性能之间的桥梁。它使得Tomcat能够成为一个通用的Web服务器，更好地与其他原生Web技术集成，并使Java作为成熟的Web服务器平台更具可行性，而不仅仅是后端技术。这表明APR不仅仅是为了获得微小的性能提升，更是为了通过克服纯Java I/O的一些固有局限性（例如，直接访问<code class="notranslate">epoll</code>进行事件通知，以及使用高度优化的OpenSSL进行加密操作），从根本上增强Java作为一流Web服务器的能力。它模糊了传统应用服务器和高性能Web服务器之间的界限，使Tomcat在某些I/O密集型场景，特别是SSL/TLS方面，能够更有效地与Apache HTTPD等原生Web服务器竞争。这表明Tomcat采取了一种战略性举措，旨在充分利用Java的便携性和丰富的生态系统，同时结合原生操作系统能力的原始性能优势。</p>
+<h3>性能增强与适用场景 (尤其HTTPS)</h3>
+<p>APR在处理HTTPS流量时尤其具有性能优势，因为它能够使用OpenSSL库。OpenSSL通常比Java内置的JSSE（Java Secure Socket Extension）在加密/解密操作上更高效，尤其是在高并发SSL握手和数据传输场景下。Tomcat 9.0及更高版本强烈推荐在HTTPS场景下使用基于OpenSSL的APR设置，以获得更佳性能。APR连接器在多线程模型下，也能像NIO一样，用更少的线程处理更多请求，从而提高并发处理能力。</p>
+<h3>配置与依赖：Tomcat Native Library</h3>
+<p>要启用APR支持，需要安装三个主要的本地组件：Apache Portable Runtime (APR) 库、Tomcat使用的APR的JNI包装器（libtcnative）和OpenSSL库。在Windows平台上，通常提供静态编译的<code class="notranslate">tcnative-1.dll</code>（或<code class="notranslate">tcnative-2.dll</code>），其中包含了OpenSSL和APR。然而，出于安全考虑，在生产环境中建议使用单独的共享DLL，并根据安全公告及时更新。在Linux系统上，通常需要安装APR和OpenSSL的开发头文件，并手动编译<code class="notranslate">libtcnative</code> JNI包装器。一旦这些库正确安装并对Java虚拟机可见（通过系统路径），Tomcat连接器将自动尝试使用APR。即使Tomcat未能找到APR库，它也会默认回退到NIO连接器，且通常不会影响功能，除非存在明确的性能问题。</p>
+<p>APR带来了操作复杂性和性能提升之间的权衡。APR的详细安装要求，包括对原生库（APR、libtcnative、OpenSSL）的需求，以及在某些情况下需要手动编译，这比部署纯Java连接器要复杂得多。此外，如果Tomcat未能找到APR库，它会优雅地回退到NIO，并且“Jira在没有它的情况下也能完美运行”。这表明，尽管APR可能带来显著的性能优势（尤其是在HTTPS方面），但它引入了对外部原生库的依赖。这种依赖增加了部署和维护的复杂性（例如，管理原生库版本、确保兼容性、应用OpenSSL的安全更新、排查原生崩溃）。因此，对于许多应用程序，特别是那些I/O密集度不高或SSL负载不重的应用程序，APR增加的操作开销可能超过其性能收益。选择使用APR需要在追求峰值性能和保持操作简易性之间进行仔细权衡。</p>
+<h2>V. Tomcat I/O模型演进与默认配置</h2>
+<h3>各版本默认连接器历史 (Tomcat 7, 8, 8.5, 9.0+)</h3>
+<p>Tomcat的I/O模型经历了显著的演进：</p>
+<ul>
+<li><strong>Tomcat 7及更早版本:</strong> 默认的HTTP连接器是BIO (<code class="notranslate">Http11Protocol</code>)。尽管如此，Tomcat 7的"HTTP/1.1"协议已经包含一个自动切换机制，会根据环境选择基于Java的阻塞连接器或APR/native连接器。NIO连接器在Tomcat 6中是实验性的，但用户可以在Tomcat 6或7中手动配置使用。</li>
+<li><strong>Tomcat 8:</strong> NIO (<code class="notranslate">Http11NioProtocol</code>) 正式成为默认连接器。其“HTTP/1.1”协议的自动切换机制现在会优先选择Java NIO或APR/native连接器。</li>
+<li><strong>Tomcat 8.5 和 9.0+:</strong> BIO连接器被完全移除。从这些版本开始，Tomcat只提供NIO, NIO2, 和APR-based连接器。</li>
+</ul>
+<p>下表总结了Tomcat各版本默认连接器的演进：</p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>Tomcat 版本</th>
+<th>默认 HTTP 连接器协议</th>
+<th>关键状态/变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tomcat 7</td>
+<td><code class="notranslate">Http11Protocol</code>(BIO)</td>
+<td>默认；包含自动切换机制，可选APR/native</td>
+</tr>
+<tr>
+<td>Tomcat 8</td>
+<td><code class="notranslate">Http11NioProtocol</code>(NIO)</td>
+<td>默认；自动切换机制优先选择NIO或APR/native</td>
+</tr>
+<tr>
+<td>Tomcat 8.5+</td>
+<td><code class="notranslate">Http11NioProtocol</code>(NIO)</td>
+<td>默认；BIO连接器被完全移除，仅支持NIO, NIO2, APR</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<h3>BIO的弃用与非阻塞模型的普及</h3>
+<p>BIO连接器被弃用的主要原因是其固有的阻塞特性与现代Web应用对非阻塞语义的强烈需求（特别是WebSocket等协议）不兼容。在阻塞API之上构建非阻塞服务被证明异常困难，导致Tomcat内部代码复杂且难以维护。这一演进反映了整个Java生态系统和Web服务器设计中，从传统的多线程阻塞I/O向更高效的事件驱动、非阻塞I/O模型的普遍和必然转变。</p>
+<h3>Comet支持的演变与WebSocket的兴起</h3>
+<p>Tomcat 8.5和9.0版本也取消了对Comet的支持。Comet（一种通过长轮询或流技术模拟服务器推送的技术）的使用应被WebSocket取代，因为WebSocket是一种更标准化、更强大且本身就依赖于非阻塞I/O的协议，提供了真正的双向全双工通信能力。</p>
+<p>I/O模型与应用范式的演进是相互交织的。BIO和Comet的同时弃用，以及NIO和WebSocket的兴起，并非一系列孤立的技术变革。相反，它标志着Web应用架构方式以及服务器处理通信方式的根本性转变。从传统的同步请求-响应模式（BIO足以应对）到实时、持久、事件驱动的交互（本质上需要非阻塞I/O）的转变，是Web开发中一个清晰而强大的趋势。Tomcat的I/O模型演进是对这些不断变化的应用范式的直接战略响应，体现了其适应和支持现代Web开发需求的能力。这意味着I/O模型的选择不仅仅是性能上的微调，更是一个能够决定应用程序在Tomcat上有效部署类型的重要决策。</p>
+<p>“默认”配置代表着强烈的推荐，而不仅仅是占位符。Tomcat 8中NIO成为默认连接器，并且BIO在Tomcat 8.5/9.0中被“完全移除”。这种演进——从BIO作为默认、到NIO作为默认、再到BIO的移除——意义重大。它不仅仅是配置文件中的一个改变，更是Tomcat开发团队对当代应用程序首选和最高性能I/O策略的明确声明和强烈推荐。BIO的移除表明它不再被认为是现代用例的可行或合适选择，实际上迫使用户采用非阻塞模型。这意味着，尽管旧版本可能提供了选择，但新版本正在积极引导用户遵循可扩展性、效率和与现代协议兼容的最佳实践，即使这意味着旧I/O模型的向后兼容性受到影响。</p>
+<h2>VI. 各I/O模型对比与选择指南</h2>
+<h3>性能、资源消耗与并发处理能力对比</h3>
+<p>下表对Tomcat的各种I/O模型在核心特性方面进行了对比：</p>
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>特性/模型</th>
+<th>BIO (Blocking I/O)</th>
+<th>NIO (Non-blocking I/O)</th>
+<th>AIO (Asynchronous I/O) / NIO.2</th>
+<th>APR (Apache Portable Runtime)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>协议类名</strong></td>
+<td><code class="notranslate">Http11Protocol</code></td>
+<td><code class="notranslate">Http11NioProtocol</code></td>
+<td><code class="notranslate">Http11Nio2Protocol</code></td>
+<td><code class="notranslate">Http11AprProtocol</code></td>
+</tr>
+<tr>
+<td><strong>阻塞/非阻塞行为</strong></td>
+<td>阻塞</td>
+<td>非阻塞</td>
+<td>异步</td>
+<td>非阻塞 (I/O操作阻塞，但事件通知非阻塞)</td>
+</tr>
+<tr>
+<td><strong>轮询支持</strong></td>
+<td>否</td>
+<td>是</td>
+<td>否 (基于回调)</td>
+<td>是</td>
+</tr>
+<tr>
+<td><strong>线程模型</strong></td>
+<td>一请求一线程</td>
+<td>Poller/Worker双线程池，多路复用</td>
+<td>异步回调，I/O操作由OS完成</td>
+<td>类似NIO，利用原生线程池</td>
+</tr>
+<tr>
+<td><strong>SSL实现</strong></td>
+<td>Java SSL (JSSE)</td>
+<td>Java SSL (JSSE)</td>
+<td>Java SSL (JSSE)</td>
+<td>OpenSSL</td>
+</tr>
+<tr>
+<td><strong>SSL握手</strong></td>
+<td>阻塞</td>
+<td>非阻塞</td>
+<td>异步</td>
+<td>阻塞 (但OpenSSL性能优异)</td>
+</tr>
+<tr>
+<td><strong>并发处理</strong></td>
+<td>低，易线程耗尽</td>
+<td>高，线程高效复用</td>
+<td>极高，I/O操作卸载至OS内核</td>
+<td>高，利用原生能力</td>
+</tr>
+<tr>
+<td><strong>资源消耗 (线程/CPU)</strong></td>
+<td>线程多，CPU因等待而低效</td>
+<td>线程少，CPU开销相对高 (轮询)</td>
+<td>线程极少，CPU利用率高 (回调)</td>
+<td>线程少，CPU效率高 (原生API)</td>
+</tr>
+<tr>
+<td><strong>典型用例</strong></td>
+<td>低并发、短连接 (已弃用)</td>
+<td>大多数现代Web应用，高并发，长连接 (如WebSocket)</td>
+<td>极高并发、I/O密集型 (如大文件传输)</td>
+<td>HTTPS性能极致要求，与原生Web服务器集成</td>
+</tr>
+<tr>
+<td><strong>Tomcat版本支持</strong></td>
+<td>Tomcat 7及更早版本默认，8.5+已移除</td>
+<td>Tomcat 6+ (实验性), 8+默认</td>
+<td>Tomcat 8.5+</td>
+<td>Tomcat 5.5+</td>
+</tr>
+<tr>
+<td><strong>主要优势</strong></td>
+<td>简单、稳定</td>
+<td>高并发、高吞吐、资源利用率高、支持新特性</td>
+<td>真正异步、极致效率 (sendfile)、进一步减少线程阻塞</td>
+<td>原生性能、OpenSSL加密高效、与OS深度集成</td>
+</tr>
+<tr>
+<td><strong>主要劣势</strong></td>
+<td>线程耗尽、资源浪费、可扩展性差</td>
+<td>相比BIO CPU开销略高 (轮询)</td>
+<td>编程复杂性高、回调死锁风险、普及度不如NIO</td>
+<td>部署复杂、依赖原生库、运维成本高、SSL握手阻塞</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<h3>适用场景与最佳实践建议</h3>
+<p><strong>BIO:</strong> 已被弃用，不推荐在新项目中使用。</p>
+<p><strong>NIO:</strong></p>
+<ul>
+<li><strong>适用场景:</strong> 大多数现代Java Web应用的首选，尤其适用于需要高并发、长连接（如WebSockets）的应用。它在性能、稳定性和易用性之间提供了良好的平衡。</li>
+<li><strong>最佳实践:</strong> 作为Tomcat 8及以上版本的默认选择，通常无需特殊配置即可获得良好性能。</li>
+</ul>
+<p><strong>AIO (NIO.2):</strong></p>
+<ul>
+<li><strong>适用场景:</strong> 极高并发、I/O密集型（如大量静态文件服务）的应用，或需要利用<code class="notranslate">sendfile</code>等高级特性的场景。</li>
+<li><strong>最佳实践:</strong> 需要更精细的异步编程模型，确保<code class="notranslate">CompletionHandler</code>不会阻塞。在Tomcat中，其普及度不如NIO，需根据具体测试结果和开发团队的异步编程经验来决定是否使用。</li>
+</ul>
+<p><strong>APR:</strong></p>
+<ul>
+<li><strong>适用场景:</strong> 对HTTPS性能有极致要求，或需要与Apache HTTP Server等原生Web服务器深度集成的场景。</li>
+<li><strong>最佳实践:</strong> 部署和维护成本相对较高，需要安装和管理本地库。如果应用以HTTPS为主，且对SSL性能有严格要求，则值得投入资源进行配置和维护。</li>
+</ul>
+<p><strong>通用建议:</strong></p>
+<ul>
+<li><strong>监控是关键:</strong> 无论选择哪种I/O模型，持续监控Tomcat和底层系统资源（如CPU、内存、线程池利用率、网络I/O）至关重要，以便识别瓶颈并进行调优。</li>
+<li><strong>基准测试:</strong> 在生产环境部署前，务必对不同连接器进行压力测试和基准测试，以找到最适合特定应用负载、硬件配置和操作系统环境的模型。</li>
+<li><strong>JVM调优:</strong> I/O模型只是性能优化的一部分。JVM内存设置（堆大小、GC算法）、线程池配置、数据库连接池（如Tomcat JDBC Connection Pool）等同样重要，需要综合考虑。</li>
+<li><strong>应用代码优化:</strong> 最终的性能瓶颈往往在应用代码层面。优化SQL查询、实现缓存机制、异步化长任务等是不可或缺的。</li>
+</ul>
+<h3>如何根据应用需求进行选择与调优</h3>
+<p>“最佳”模型并非普遍适用，而是取决于具体环境。关于哪种服务器或连接器最佳，并没有一个通用答案，这高度依赖于应用程序代码、静态和动态内容的比率、底层操作系统和硬件，以及各种调优选项。NIO与BIO的选择也取决于具体用例。最终，确定最佳连接器的方法是对特定应用程序在不同条件下进行基准测试。这意味着，没有一个I/O模型能够满足所有场景。最佳选择是一个复杂权衡的结果，它涉及到应用程序的特定工作负载（例如，I/O密集型与CPU密集型、短连接与长连接、静态内容与动态内容、HTTPS与HTTP）、底层硬件和操作系统，甚至团队的运维专业知识。因此，报告不能简单地给出“使用X”的建议，而是必须通过系统的分析、测试和持续监控来指导用户如何做出选择。</p>
+<p>I/O模型的选择会影响整个性能栈。除了网络I/O，还有许多其他性能指标，如JVM堆使用、垃圾回收、线程池利用率、CPU使用率、磁盘I/O和数据库连接池等。系统层面的资源限制可能会限制Tomcat的性能，无论其配置如何。这表明选择I/O模型并非孤立的决策，它会对整个应用程序栈产生连锁反应。低效的I/O模型可能会加剧内存压力（由于过多的线程创建或长时间占用的连接）、增加垃圾回收开销或造成CPU瓶颈。相反，优化的I/O模型可以释放资源，使系统的其他部分（如JVM或数据库层）表现更好。这意味着性能调优需要采取整体视角，其中I/O模型是基础层，它显著影响着应用程序栈更高层级优化的有效性。</p>
+<p>根据应用需求进行选择与调优时，需要综合考虑应用类型和流量模式。对于大多数现代Web应用，特别是那些包含WebSocket或长轮询等长连接的应用，NIO通常是最佳选择，提供良好的性能和稳定性。对于静态文件服务或对HTTPS性能有极致要求的场景，APR可能带来显著性能提升，但需权衡其运维复杂性。AIO/NIO.2在理论上提供最高效率，但其复杂性可能使其更适合特定、高度优化的I/O密集型场景。同时，评估运维能力和资源也至关重要。APR的本地库依赖会增加部署和维护的复杂性。如果团队不熟悉本地库管理或资源有限，NIO可能是更稳妥、更易于管理的默认选择。性能优化是一个持续的过程。通过对关键指标（如请求处理时间、线程利用率、CPU使用率）的持续监控，可以发现新的瓶颈，并不断调整I/O模型配置和其他Tomcat参数，以适应应用负载的变化和业务增长。</p>
+<h2>总结与展望</h2>
+<p>Tomcat的网络I/O模型从最初的阻塞式BIO，逐步演进到高效的非阻塞式NIO，再到更深层次的异步AIO (NIO.2) 和利用原生API的APR。这一演进的核心驱动力是不断提升高并发处理能力、优化资源利用率以及适应现代Web应用对实时通信和长连接的需求。BIO因其“一请求一线程”的阻塞特性，已在现代Tomcat版本中被弃用。NIO凭借其多路复用和线程高效复用成为当前的主流和默认选择。AIO和APR则在特定场景下（如大文件传输、高SSL负载）提供更极致的性能优化，但可能伴随更高的复杂性。</p>
+<p>Tomcat的I/O模型演进，从BIO（用户空间阻塞）到NIO（用户空间非阻塞带轮询），再到AIO（用户空间异步带内核通知）和APR（原生内核级I/O），揭示了一个清晰而宏大的趋势：不断努力将I/O处理推向更接近操作系统内核的层面。这是因为内核在管理I/O操作、上下文切换和直接硬件交互方面本质上更高效。此外，Tomcat对HTTP/2的支持与NIO2/APR相关，这表明I/O模型的演进不仅受内部效率提升的驱动，也受需要更复杂和高效底层I/O机制的新网络协议的需求所影响。这意味着Tomcat未来在I/O能力上的进步，可能会涉及更深层次的内核集成和对新兴协议的适应，不断努力最小化开销并最大化吞吐量，以应对日益互联世界的需求。</p>
+<p>随着HTTP/2、HTTP/3 (QUIC) 等新一代网络协议的普及，以及更高效的异步编程范式和操作系统I/O机制的成熟，Tomcat的I/O模型将继续演进。未来可能会有更深入的内核集成、更智能的资源调度、更优化的异步处理机制，以应对日益增长的并发需求和更复杂的数据流。作为Tomcat用户，持续关注其官方文档和社区，以便及时了解和应用最新的I/O优化技术，是确保应用性能和可扩展性的关键。</p></div>
+<div style="font-size:small;margin-top:8px;float:right;"></div>
+
+<button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
+<div class="comments" id="comments"></div>
+
+</div>
+    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io">reborn's technical blog</a></div>
+<div id="footer2">
+    <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
+</div>
+
+<script>
+var now=new Date();
+document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+
+if(""!=""){
+    var startSite=new Date("");
+    var diff=now.getTime()-startSite.getTime();
+    var diffDay=Math.floor(diff/(1000*60*60*24));
+    document.getElementById("runday").innerHTML="网站运行"+diffDay+"天"+" • ";
+}
+</script></div>
+</body>
+<script>
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z'};
+var utterancesLoad=0;
+
+let themeSettings={
+    "dark": ["dark","moon","#00f0ff","dark-blue"],
+    "light": ["light","sun","#ff5000","github-light"],
+    "auto": ["auto","sync","","preferred-color-scheme"]
+};
+function changeTheme(mode, icon, color, utheme){
+    document.documentElement.setAttribute("data-color-mode",mode);
+    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
+    document.getElementById("themeSwitch").parentNode.style.color=color;
+    if(utterancesLoad==1){utterancesTheme(utheme);}
+}
+function modeSwitch(){
+    let currentMode=document.documentElement.getAttribute('data-color-mode');
+    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
+    localStorage.setItem("meek_theme", newMode);
+    if(themeSettings[newMode]){
+        changeTheme(...themeSettings[newMode]);
+    }
+}
+function utterancesTheme(theme){
+    const message={type:'set-theme',theme: theme};
+    const iframe=document.getElementsByClassName('utterances-frame')[0];
+    iframe.contentWindow.postMessage(message,'https://utteranc.es');
+}
+if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
+console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
+</script>
+
+<script>
+document.getElementById("pathHome").setAttribute("d",IconList["home"]);
+document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
+
+
+
+function openComments(){
+    cm=document.getElementById("comments");
+    cmButton=document.getElementById("cmButton");
+    cmButton.innerHTML="loading";
+    span=document.createElement("span");
+    span.setAttribute("class","AnimatedEllipsis");
+    cmButton.appendChild(span);
+
+    script=document.createElement("script");
+    script.setAttribute("src","https://utteranc.es/client.js");
+    script.setAttribute("repo","hanlinyuanexplosivescholar/tech-reborn.github.io");
+    script.setAttribute("issue-term","title");
+    
+    if(localStorage.getItem("meek_theme")=="dark"){script.setAttribute("theme","dark-blue");}
+    else if(localStorage.getItem("meek_theme")=="light") {script.setAttribute("theme","github-light");}
+    else{script.setAttribute("theme","preferred-color-scheme");}
+    
+    script.setAttribute("crossorigin","anonymous");
+    script.setAttribute("async","");
+    cm.appendChild(script);
+
+    int=self.setInterval("iFrameLoading()",200);
+}
+
+function iFrameLoading(){
+    var utterances=document.getElementsByClassName('utterances');
+    if(utterances.length==1){
+        if(utterances[0].style.height!=""){
+            utterancesLoad=1;
+            int=window.clearInterval(int);
+            document.getElementById("cmButton").style.display="none";
+            console.log("utterances Load OK");
+        }
+    }
+}
+
+
+
+</script>
+
+
+</html>
