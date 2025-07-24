@@ -227,17 +227,17 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
 如果设置成功，说明是第一次请求<br>
 如果设置失败，则对计数器递增并重置过期时间</p>
 <pre class="notranslate"><code class="notranslate">   缺点： 存在并发问题
+   需要多次Redis操作 
+   性能相对较差 
 </code></pre>
-<p>需要多次Redis操作<br>
-性能相对较差</p>
 <p>修改后：<br>
 使用Lua脚本实现<br>
 执行流程： 通过单个原子操作执行Lua脚本<br>
 脚本内完成计数递增和过期时间设置</p>
 <pre class="notranslate"><code class="notranslate">   优点： 原子性操作，避免并发问题
-</code></pre>
-<p>只需一次Redis调用<br>
-性能更好</p></div>
+   只需一次Redis调用 
+  性能更好 
+</code></pre></div>
 <div style="font-size:small;margin-top:8px;float:right;"></div>
 
 <button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>

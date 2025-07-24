@@ -152,8 +152,8 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
 如果设置失败，则对计数器递增并重置过期时间 
 
        缺点： 存在并发问题
-需要多次Redis操作 
-性能相对较差 
+       需要多次Redis操作 
+       性能相对较差 
 
 
 修改后：
@@ -162,6 +162,6 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
 脚本内完成计数递增和过期时间设置 
 
        优点： 原子性操作，避免并发问题
-只需一次Redis调用 
-性能更好 
+       只需一次Redis调用 
+      性能更好 
       
