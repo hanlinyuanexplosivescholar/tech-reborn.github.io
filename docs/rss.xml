@@ -1,5 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>reborn's technical blog</title><link>https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io</link><description>Here are some technical shares of personal interest</description><copyright>reborn's technical blog</copyright><docs>http://www.rssboard.org/rss-specification</docs><generator>python-feedgen</generator><image><url>https://avatars.githubusercontent.com/u/68176923?v=4</url><title>avatar</title><link>https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io</link></image><lastBuildDate>Tue, 02 Sep 2025 16:11:12 +0000</lastBuildDate><managingEditor>reborn's technical blog</managingEditor><ttl>60</ttl><webMaster>reborn's technical blog</webMaster><item><title>通过消息中间件处理分布式事务的执行流程</title><link>https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/tong-guo-xiao-xi-zhong-jian-jian-chu-li-fen-bu-shi-shi-wu-de-zhi-xing-liu-cheng.html</link><description>事务处理流程
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0"><channel><title>reborn's technical blog</title><link>https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io</link><description>Here are some technical shares of personal interest</description><copyright>reborn's technical blog</copyright><docs>http://www.rssboard.org/rss-specification</docs><generator>python-feedgen</generator><image><url>https://avatars.githubusercontent.com/u/68176923?v=4</url><title>avatar</title><link>https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io</link></image><lastBuildDate>Fri, 05 Sep 2025 14:27:33 +0000</lastBuildDate><managingEditor>reborn's technical blog</managingEditor><ttl>60</ttl><webMaster>reborn's technical blog</webMaster><item><title>Mongo分片状态下唯一索引的创建规则</title><link>https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/Mongo-fen-pian-zhuang-tai-xia-wei-yi-suo-yin-de-chuang-jian-gui-ze.html</link><description>在 MongoDB 分片集群（Sharded Cluster）下，**可以对某个字段建立唯一索引，但有严格限制**：
+
+---
+
+## 1. 分片集群唯一索引的限制
+
+### **必须包含分片键**
+- 唯一索引字段**必须包含分片键**（shard key），且分片键要作为唯一索引的一部分。</description><guid isPermaLink="true">https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/Mongo-fen-pian-zhuang-tai-xia-wei-yi-suo-yin-de-chuang-jian-gui-ze.html</guid><pubDate>Fri, 05 Sep 2025 14:27:03 +0000</pubDate></item><item><title>通过消息中间件处理分布式事务的执行流程</title><link>https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/tong-guo-xiao-xi-zhong-jian-jian-chu-li-fen-bu-shi-shi-wu-de-zhi-xing-liu-cheng.html</link><description>事务处理流程
 以下是使用消息中间件实现分布式事务的典型处理流程：
 
 1. 本地事务和消息发送阶段
