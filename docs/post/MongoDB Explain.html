@@ -85,7 +85,7 @@ body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;
 <p><code class="notranslate">explain()</code>命令接受一个可选的<code class="notranslate">verbosity</code>（详细程度）参数，它决定了返回信息的数量和类型。理解这些模式是掌握<code class="notranslate">explain()</code>的关键。</p>
 <h4>1.2.1 <code class="notranslate">queryPlanner</code>模式（默认）</h4>
 <p>这是最轻量级的模式。在此模式下，MongoDB只运行查询优化器来选择优胜计划，但并不会实际执行该计划。它主要返回<code class="notranslate">queryPlanner</code>部分的信息，详细说明了优化器选择的计划以及所有被拒绝的候选项。此模式非常适合快速检查一个查询是否使用了预期的索引，例如确定是<code class="notranslate">IXSCAN</code>还是<code class="notranslate">COLLSCAN</code>。</p>
-<p>####1.2.2 <code class="notranslate">executionStats</code>模式</p>
+<h4>1.2.2 <code class="notranslate">executionStats</code>模式</h4>
 <p>该模式是性能分析的首选工具。它会运行查询优化器，选择优胜计划，然后将该计划执行到完成。返回结果中除了包含<code class="notranslate">queryPlanner</code>信息外，还会额外提供<code class="notranslate">executionStats</code>部分，其中包含了实际执行的统计数据。这些统计数据包括总执行时间、扫描的文档数、扫描的索引键数以及返回的文档数。</p>
 <h4>1.2.3 <code class="notranslate">allPlansExecution</code>模式</h4>
 <p>这是最详细、资源消耗最高的模式。它不仅会执行优胜计划并返回其完整的执行统计信息，还会在计划选择阶段捕获并返回所有被拒绝的候选计划的部分执行统计。该模式通常被称为“取证模式”。</p>
