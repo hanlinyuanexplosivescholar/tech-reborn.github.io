@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html data-color-mode="light" data-dark-theme="dark" data-light-theme="light" lang="zh-CN">
+<head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link href='https://mirrors.sustech.edu.cn/cdnjs/ajax/libs/Primer/21.0.7/primer.css' rel='stylesheet' />
+    
+    <link rel="icon" href="https://avatars.githubusercontent.com/u/68176923?v=4"><script>
+        let theme = localStorage.getItem("meek_theme") || "light";
+        document.documentElement.setAttribute("data-color-mode", theme);
+    </script>
+<meta name="description" content="MySQL CPU 飙高是数据库性能故障中最常见、最棘手的故障之一，通常是由**执行效率极低的 SQL 语句**或**不合理的并发锁竞争**导致的。">
+<meta property="og:title" content="MySQL CPU 飙高问题定位及优化">
+<meta property="og:description" content="MySQL CPU 飙高是数据库性能故障中最常见、最棘手的故障之一，通常是由**执行效率极低的 SQL 语句**或**不合理的并发锁竞争**导致的。">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io/post/MySQL%20CPU%20-biao-gao-wen-ti-ding-wei-ji-you-hua.html">
+<meta property="og:image" content="https://avatars.githubusercontent.com/u/68176923?v=4">
+<title>MySQL CPU 飙高问题定位及优化</title>
+
+
+
+</head>
+<style>
+body{box-sizing: border-box;min-width: 200px;max-width: 900px;margin: 20px auto;padding: 45px;font-size: 16px;font-family: sans-serif;line-height: 1.25;}
+#header{display:flex;padding-bottom:8px;border-bottom: 1px solid var(--borderColor-muted, var(--color-border-muted));margin-bottom: 16px;}
+#footer {margin-top:64px; text-align: center;font-size: small;}
+
+</style>
+
+<style>
+.postTitle{margin: auto 0;font-size:40px;font-weight:bold;}
+.title-right{display:flex;margin:auto 0 0 auto;}
+.title-right .circle{padding: 14px 16px;margin-right:8px;}
+#postBody{border-bottom: 1px solid var(--color-border-default);padding-bottom:36px;}
+#postBody hr{height:2px;}
+#cmButton{height:48px;margin-top:48px;}
+#comments{margin-top:64px;}
+.g-emoji{font-size:24px;}
+@media (max-width: 600px) {
+    body {padding: 8px;}
+    .postTitle{font-size:24px;}
+}
+.copy-feedback {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 50px;
+    color: var(--color-fg-on-emphasis);
+    background-color: var(--color-fg-muted);
+    border-radius: 3px;
+    padding: 5px 8px;
+    font-size: 12px;
+}
+</style>
+
+
+
+
+<body>
+    <div id="header">
+<h1 class="postTitle">MySQL CPU 飙高问题定位及优化</h1>
+<div class="title-right">
+    <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io" id="buttonHome" class="btn btn-invisible circle" title="首页">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathHome" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+    <a href="https://github.com/hanlinyuanexplosivescholar/tech-reborn.github.io/issues/63" target="_blank" class="btn btn-invisible circle" title="Issue">
+        <svg class="octicon" width="16" height="16">
+            <path id="pathIssue" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+    
+
+    <a class="btn btn-invisible circle" onclick="modeSwitch();" title="切换主题">
+        <svg class="octicon" width="16" height="16" >
+            <path id="themeSwitch" fill-rule="evenodd"></path>
+        </svg>
+    </a>
+
+</div>
+</div>
+    <div id="content">
+<div class="markdown-body" id="postBody"><p>MySQL CPU 飙高是数据库性能故障中最常见、最棘手的故障之一，通常是由<strong>执行效率极低的 SQL 语句</strong>或<strong>不合理的并发锁竞争</strong>导致的。</p>
+<p>排查核心思路是：<strong>定位是哪个进程/线程消耗了 CPU，然后找出该线程正在执行的低效 SQL。</strong></p>
+<p>以下是线上环境排查 MySQL CPU 飙高问题的系统化流程：</p>
+<hr>
+<h3>🚀 第一阶段：OS/系统层定位（确定 CPU 消耗源）</h3>
+<p>首先要确定 CPU 升高是否确实由 <code class="notranslate">mysqld</code> 进程引起。</p>
+<ol>
+<li>
+<p><strong>使用 <code class="notranslate">top</code> 或 <code class="notranslate">htop</code>：</strong><br>
+<strong>Bash</strong></p>
+<pre class="notranslate"><code class="notranslate">top
+</code></pre>
+<ul>
+<li>观察 <strong><code class="notranslate">mysqld</code></strong> 进程的 <code class="notranslate">%CPU</code> 占用率。</li>
+</ul>
+</li>
+<li>
+<p>定位具体线程（Threads）：<br>
+如果 mysqld 进程很高，需要进一步定位是哪个内部线程在消耗资源。<br>
+<strong>Bash</strong></p>
+<pre class="notranslate"><code class="notranslate"># 使用 top -H -p [mysqld_pid] 或 pidstat -t -p [mysqld_pid] 1
+# 查找 mysqld 进程中，哪个 LWP/TID (线程ID) 占用CPU最高。
+</code></pre>
+</li>
+<li>
+<p>转换线程 ID：<br>
+将高 CPU 占用的 OS 线程 ID (TID) 转换为 MySQL 内部的 PROCESSLIST_ID 或 THREAD_ID，以便在 MySQL 内部追踪。</p>
+<ul>
+<li>
+<p><strong>MySQL 5.7+：</strong> 使用 <code class="notranslate">performance_schema.threads</code> 表进行关联。<br>
+<strong>SQL</strong></p>
+<pre class="notranslate"><code class="notranslate">SELECT *
+FROM performance_schema.threads
+WHERE THREAD_OS_ID = [OS 线程ID];
+</code></pre>
+</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3>📝 第二阶段：MySQL 内部定位（找出元凶 SQL）</h3>
+<p>一旦有了 MySQL 内部的进程/线程 ID，就可以开始定位导致 CPU 升高的 SQL 语句。</p>
+<h4>1. 实时查看当前活跃进程</h4>
+<p>这是最常用的命令，可以快速看到所有正在执行的 SQL 语句、执行时间和状态。</p>
+<p><strong>SQL</strong></p>
+<pre class="notranslate"><code class="notranslate">SHOW FULL PROCESSLIST;
+</code></pre>
+<p><strong>分析要点：</strong></p>
+<ul>
+<li><strong><code class="notranslate">Id</code>：</strong> 对应于上面找到的 <code class="notranslate">PROCESSLIST_ID</code>。</li>
+<li><strong><code class="notranslate">Command</code>：</strong> 如果是 <code class="notranslate">Query</code>，说明正在执行查询；如果是 <code class="notranslate">Sleep</code>，说明连接空闲。</li>
+<li><strong><code class="notranslate">Time</code>：</strong> 执行时间（秒）。<strong>找出 <code class="notranslate">Time</code> 值大且 <code class="notranslate">Command</code> 为 <code class="notranslate">Query</code> 的语句。</strong></li>
+<li><strong><code class="notranslate">State</code>：</strong> 线程状态。关注如下状态：
+<ul>
+<li><strong><code class="notranslate">Sending data</code>：</strong> 并非一定是发送数据，可能是在进行全表/全索引扫描、大量数据处理。这是 CPU 消耗的常见状态。</li>
+<li><strong><code class="notranslate">Sorting result</code> / <code class="notranslate">Copying to tmp table</code>：</strong> 通常是由于 <code class="notranslate">ORDER BY</code> 或 <code class="notranslate">GROUP BY</code> 操作没有使用索引，需要在内存或磁盘创建临时表进行排序或聚合，极度消耗 CPU。</li>
+</ul>
+</li>
+</ul>
+<h4>2. 分析慢查询日志（事后追溯）</h4>
+<p>如果实时查看未能捕捉到问题（因为低效查询可能执行非常快但次数极多），应该分析慢查询日志。</p>
+<ul>
+<li><strong>确保开启：</strong> 确认 <code class="notranslate">slow_query_log</code> 为 <code class="notranslate">ON</code>，并设置合理的 <code class="notranslate">long_query_time</code>（线上环境通常设为 1 秒或更低）。</li>
+<li><strong>分析日志：</strong> 使用 <code class="notranslate">mysqldumpslow</code> 或 Percona Toolkit 的 <code class="notranslate">pt-query-digest</code> 工具对慢查询日志文件进行分析，找出：
+<ul>
+<li><code class="notranslate">Query time</code> (执行总时间) 最长的 SQL。</li>
+<li><code class="notranslate">Rows examined</code> (扫描行数) 最多，但 <code class="notranslate">Rows sent</code> (返回行数) 很少的 SQL。<strong>扫描行数多意味着进行了大量计算和逻辑 I/O，这是 CPU 飙高的主要原因。</strong></li>
+</ul>
+</li>
+</ul>
+<h4>3. 利用 Performance Schema (MySQL 5.6+ 进阶)</h4>
+<p>Performance Schema 提供了更详细的性能指标。</p>
+<p><strong>SQL</strong></p>
+<pre class="notranslate"><code class="notranslate">-- 找出最耗时、最耗CPU的 SQL 语句 (基于语句指纹)
+SELECT
+    schema_name,
+    digest_text,
+    count_star,
+    sum_timer_wait
+FROM
+    performance_schema.events_statements_summary_by_digest
+ORDER BY
+    sum_timer_wait DESC
+LIMIT 10;
+</code></pre>
+<hr>
+<h3>🔨 第三阶段：优化与解决</h3>
+<p>定位到“元凶 SQL”后，使用 <code class="notranslate">EXPLAIN</code> 命令分析其执行计划，然后进行优化。</p>
+<p><strong>SQL</strong></p>
+<pre class="notranslate"><code class="notranslate">EXPLAIN [元凶SQL语句];
+</code></pre>
+<h4>常见优化方向：</h4>
+<ol>
+<li><strong>索引缺失：</strong>
+<ul>
+<li><strong>问题：</strong><code class="notranslate">EXPLAIN</code> 结果中 <code class="notranslate">type</code> 为 <code class="notranslate">ALL</code>（全表扫描）。</li>
+<li><strong>解决：</strong> 根据 <code class="notranslate">WHERE</code>、<code class="notranslate">ORDER BY</code> 或 <code class="notranslate">GROUP BY</code> 的字段添加或优化联合索引，避免全表扫描。</li>
+</ul>
+</li>
+<li><strong>函数操作：</strong>
+<ul>
+<li><strong>问题：</strong> 在索引列上使用了函数（如 <code class="notranslate">YEAR(date_col) = 2024</code>）或隐式类型转换，导致索引失效。</li>
+<li><strong>解决：</strong> 避免在索引列上使用函数，改写为范围查询（如 <code class="notranslate">date_col BETWEEN '2024-01-01' AND '2024-12-31'</code>）。</li>
+</ul>
+</li>
+<li><strong>不当的 <code class="notranslate">ORDER BY</code>/<code class="notranslate">GROUP BY</code>：</strong>
+<ul>
+<li><strong>问题：</strong><code class="notranslate">Extra</code> 字段显示 <code class="notranslate">Using filesort</code> 或 <code class="notranslate">Using temporary</code>。</li>
+<li><strong>解决：</strong> 建立覆盖索引，让排序或分组可以直接在索引上完成，避免创建临时表。</li>
+</ul>
+</li>
+<li><strong>连接风暴：</strong>
+<ul>
+<li><strong>现象：</strong><code class="notranslate">SHOW STATUS LIKE 'Threads_connected'</code> 很高，<code class="notranslate">Threads_running</code> 偶尔高。</li>
+<li><strong>解决：</strong> 检查应用程序连接池配置，确保连接被正确释放；限制 <code class="notranslate">max_connections</code> 以保护数据库。</li>
+</ul>
+</li>
+<li><strong>DDL 操作：</strong>
+<ul>
+<li><strong>问题：</strong> 正在执行 <code class="notranslate">ALTER TABLE</code> 等 DDL 操作，这些操作通常会加表锁，阻塞其他查询并可能导致 CPU 短时飙高。</li>
+<li><strong>解决：</strong> 尽量在业务低峰期或使用在线 DDL 工具（如 Percona 的 <code class="notranslate">pt-online-schema-change</code>）。</li>
+</ul>
+</li>
+</ol></div>
+<div style="font-size:small;margin-top:8px;float:right;"></div>
+
+<button class="btn btn-block" type="button" onclick="openComments()" id="cmButton">评论</button>
+<div class="comments" id="comments"></div>
+
+</div>
+    <div id="footer"><div id="footer1">Copyright © <span id="copyrightYear"></span> <a href="https://hanlinyuanexplosivescholar.github.io/tech-reborn.github.io">reborn's technical blog</a></div>
+<div id="footer2">
+    <span id="runday"></span><span>Powered by <a href="https://meekdai.com/Gmeek.html" target="_blank">Gmeek</a></span>
+</div>
+
+<script>
+var now=new Date();
+document.getElementById("copyrightYear").innerHTML=now.getFullYear();
+
+if(""!=""){
+    var startSite=new Date("");
+    var diff=now.getTime()-startSite.getTime();
+    var diffDay=Math.floor(diff/(1000*60*60*24));
+    document.getElementById("runday").innerHTML="网站运行"+diffDay+"天"+" • ";
+}
+</script></div>
+</body>
+<script>
+var IconList={'sun': 'M8 10.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM8 12a4 4 0 100-8 4 4 0 000 8zM8 0a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V.75A.75.75 0 018 0zm0 13a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 018 13zM2.343 2.343a.75.75 0 011.061 0l1.06 1.061a.75.75 0 01-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zm9.193 9.193a.75.75 0 011.06 0l1.061 1.06a.75.75 0 01-1.06 1.061l-1.061-1.06a.75.75 0 010-1.061zM16 8a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0116 8zM3 8a.75.75 0 01-.75.75H.75a.75.75 0 010-1.5h1.5A.75.75 0 013 8zm10.657-5.657a.75.75 0 010 1.061l-1.061 1.06a.75.75 0 11-1.06-1.06l1.06-1.06a.75.75 0 011.06 0zm-9.193 9.193a.75.75 0 010 1.06l-1.06 1.061a.75.75 0 11-1.061-1.06l1.06-1.061a.75.75 0 011.061 0z', 'moon': 'M9.598 1.591a.75.75 0 01.785-.175 7 7 0 11-8.967 8.967.75.75 0 01.961-.96 5.5 5.5 0 007.046-7.046.75.75 0 01.175-.786zm1.616 1.945a7 7 0 01-7.678 7.678 5.5 5.5 0 107.678-7.678z', 'sync': 'M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z', 'home': 'M6.906.664a1.749 1.749 0 0 1 2.187 0l5.25 4.2c.415.332.657.835.657 1.367v7.019A1.75 1.75 0 0 1 13.25 15h-3.5a.75.75 0 0 1-.75-.75V9H7v5.25a.75.75 0 0 1-.75.75h-3.5A1.75 1.75 0 0 1 1 13.25V6.23c0-.531.242-1.034.657-1.366l5.25-4.2Zm1.25 1.171a.25.25 0 0 0-.312 0l-5.25 4.2a.25.25 0 0 0-.094.196v7.019c0 .138.112.25.25.25H5.5V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v5.25h2.75a.25.25 0 0 0 .25-.25V6.23a.25.25 0 0 0-.094-.195Z', 'github': 'M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z', 'copy': 'M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z', 'check': 'M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z'};
+var utterancesLoad=0;
+
+let themeSettings={
+    "dark": ["dark","moon","#00f0ff","dark-blue"],
+    "light": ["light","sun","#ff5000","github-light"],
+    "auto": ["auto","sync","","preferred-color-scheme"]
+};
+function changeTheme(mode, icon, color, utheme){
+    document.documentElement.setAttribute("data-color-mode",mode);
+    document.getElementById("themeSwitch").setAttribute("d",value=IconList[icon]);
+    document.getElementById("themeSwitch").parentNode.style.color=color;
+    if(utterancesLoad==1){utterancesTheme(utheme);}
+}
+function modeSwitch(){
+    let currentMode=document.documentElement.getAttribute('data-color-mode');
+    let newMode = currentMode === "light" ? "dark" : currentMode === "dark" ? "auto" : "light";
+    localStorage.setItem("meek_theme", newMode);
+    if(themeSettings[newMode]){
+        changeTheme(...themeSettings[newMode]);
+    }
+}
+function utterancesTheme(theme){
+    const message={type:'set-theme',theme: theme};
+    const iframe=document.getElementsByClassName('utterances-frame')[0];
+    iframe.contentWindow.postMessage(message,'https://utteranc.es');
+}
+if(themeSettings[theme]){changeTheme(...themeSettings[theme]);}
+console.log("\n %c Gmeek last https://github.com/Meekdai/Gmeek \n","padding:5px 0;background:#02d81d;color:#fff");
+</script>
+
+<script>
+document.getElementById("pathHome").setAttribute("d",IconList["home"]);
+document.getElementById("pathIssue").setAttribute("d",IconList["github"]);
+
+
+
+function openComments(){
+    cm=document.getElementById("comments");
+    cmButton=document.getElementById("cmButton");
+    cmButton.innerHTML="loading";
+    span=document.createElement("span");
+    span.setAttribute("class","AnimatedEllipsis");
+    cmButton.appendChild(span);
+
+    script=document.createElement("script");
+    script.setAttribute("src","https://utteranc.es/client.js");
+    script.setAttribute("repo","hanlinyuanexplosivescholar/tech-reborn.github.io");
+    script.setAttribute("issue-term","title");
+    
+    if(localStorage.getItem("meek_theme")=="dark"){script.setAttribute("theme","dark-blue");}
+    else if(localStorage.getItem("meek_theme")=="light") {script.setAttribute("theme","github-light");}
+    else{script.setAttribute("theme","preferred-color-scheme");}
+    
+    script.setAttribute("crossorigin","anonymous");
+    script.setAttribute("async","");
+    cm.appendChild(script);
+
+    int=self.setInterval("iFrameLoading()",200);
+}
+
+function iFrameLoading(){
+    var utterances=document.getElementsByClassName('utterances');
+    if(utterances.length==1){
+        if(utterances[0].style.height!=""){
+            utterancesLoad=1;
+            int=window.clearInterval(int);
+            document.getElementById("cmButton").style.display="none";
+            console.log("utterances Load OK");
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const createClipboardHTML = (codeContent, additionalClasses = '') => `
+        <pre class="notranslate"><code class="notranslate">${codeContent}</code></pre>
+        <div class="clipboard-container position-absolute right-0 top-0 ${additionalClasses}">
+            <clipboard-copy class="ClipboardButton btn m-2 p-0" role="button" style="display: inherit;">
+                <svg height="16" width="16" class="octicon octicon-copy m-2"><path d="${IconList["copy"]}"></path></svg>
+                <svg height="16" width="16" class="octicon octicon-check color-fg-success m-2 d-none"><path d="${IconList["check"]}"></path></svg>
+            </clipboard-copy>
+            <div class="copy-feedback">Copied!</div>
+        </div>
+    `;
+
+    const handleCodeElements = (selector = '') => {
+        document.querySelectorAll(selector).forEach(codeElement => {
+            const codeContent = codeElement.innerHTML;
+            const newStructure = document.createElement('div');
+            newStructure.className = 'snippet-clipboard-content position-relative overflow-auto';
+            newStructure.innerHTML = createClipboardHTML(codeContent);
+
+            const parentElement = codeElement.parentElement;
+            if (selector.includes('highlight')) {
+                parentElement.insertBefore(newStructure, codeElement.nextSibling);
+                parentElement.removeChild(codeElement);
+            } else {
+                parentElement.parentElement.replaceChild(newStructure, parentElement);
+            }
+        });
+    };
+
+    handleCodeElements('pre.notranslate > code.notranslate');
+    handleCodeElements('div.highlight > pre.notranslate');
+
+    let currentFeedback = null;
+    document.querySelectorAll('clipboard-copy').forEach(copyButton => {
+        copyButton.addEventListener('click', () => {
+            const codeContent = copyButton.closest('.snippet-clipboard-content').innerText;
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = codeContent;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+
+            const copyIcon = copyButton.querySelector('.octicon-copy');
+            const checkIcon = copyButton.querySelector('.octicon-check');
+            const copyFeedback = copyButton.nextElementSibling;
+
+            if (currentFeedback && currentFeedback !== copyFeedback) {currentFeedback.style.display = 'none';}
+            currentFeedback = copyFeedback;
+
+            copyIcon.classList.add('d-none');
+            checkIcon.classList.remove('d-none');
+            copyFeedback.style.display = 'block';
+            copyButton.style.borderColor = 'var(--color-success-fg)';
+
+            setTimeout(() => {
+                copyIcon.classList.remove('d-none');
+                checkIcon.classList.add('d-none');
+                copyFeedback.style.display = 'none';
+                copyButton.style.borderColor = '';
+            }, 2000);
+        });
+    });
+});
+
+</script>
+
+
+</html>
